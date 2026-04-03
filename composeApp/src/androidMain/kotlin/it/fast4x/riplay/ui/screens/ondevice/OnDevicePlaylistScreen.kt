@@ -12,9 +12,11 @@ import androidx.navigation.NavController
 import com.github.doyaaaaaken.kotlincsv.client.KotlinCsvExperimental
 import it.fast4x.riplay.extensions.preferences.disableScrollingTextKey
 import it.fast4x.riplay.extensions.preferences.rememberPreference
+import it.fast4x.riplay.ui.components.PageContainer
 import it.fast4x.riplay.ui.components.ScreenContainer
+import kotlinx.serialization.ExperimentalSerializationApi
 
-@OptIn(KotlinCsvExperimental::class)
+@OptIn(KotlinCsvExperimental::class, ExperimentalSerializationApi::class)
 @ExperimentalMaterialApi
 @ExperimentalTextApi
 @ExperimentalFoundationApi
@@ -27,21 +29,14 @@ fun OnDevicePlaylistScreen(
     folder: String,
     miniPlayer: @Composable () -> Unit = {},
 ) {
-    ScreenContainer(
-        navController,
-        0,
-        onTabChanged = {},
-        miniPlayer,
-        navBarContent = {}
-    ) { currentTabIndex ->
-                    when (currentTabIndex) {
-                        0 -> {
-                            OnDevicePlaylist(
-                                navController = navController,
-                                folder = folder
-                            )
-                        }
-                    }
-            }
+    PageContainer(
+        navController = navController,
+        miniPlayer = miniPlayer,
+    ) {
+        OnDevicePlaylist(
+            navController = navController,
+            folder = folder
+        )
+    }
 
 }

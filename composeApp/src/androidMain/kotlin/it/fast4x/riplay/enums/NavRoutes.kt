@@ -32,10 +32,9 @@ enum class NavRoutes {
     rewind,
     listenerLevel,
     chip,
-    controller,
     onDevicePlaylist,
     blacklist,
-    ritunecontroller;
+    onBoarding;
 
     companion object {
         fun current( navController: NavController ) = navController.currentBackStackEntry?.destination?.route

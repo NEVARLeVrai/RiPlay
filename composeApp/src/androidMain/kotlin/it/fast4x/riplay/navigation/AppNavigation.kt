@@ -17,13 +17,13 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -37,6 +37,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.github.doyaaaaaken.kotlincsv.client.KotlinCsvExperimental
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
@@ -49,7 +50,6 @@ import it.fast4x.riplay.enums.ThumbnailRoundness
 import it.fast4x.riplay.enums.TransitionEffect
 import it.fast4x.riplay.data.models.Mood
 import it.fast4x.riplay.data.models.SearchQuery
-import it.fast4x.riplay.extensions.ritune.improved.RiTuneControllerScreen
 import it.fast4x.riplay.ui.screens.blacklist.BlacklistScreen
 import it.fast4x.riplay.extensions.listenerlevel.ListenerLevelCharts
 import it.fast4x.riplay.ui.components.CustomModalBottomSheet
@@ -78,45 +78,35 @@ import it.fast4x.riplay.extensions.preferences.homeScreenTabIndexKey
 import it.fast4x.riplay.extensions.preferences.pauseSearchHistoryKey
 import it.fast4x.riplay.extensions.preferences.preferences
 import it.fast4x.riplay.extensions.preferences.rememberPreference
+import it.fast4x.riplay.extensions.preferences.showOnBoardingScreenKey
 import it.fast4x.riplay.extensions.preferences.thumbnailRoundnessKey
 import it.fast4x.riplay.extensions.preferences.transitionEffectKey
 import it.fast4x.riplay.extensions.rewind.RewindListScreen
 import it.fast4x.riplay.extensions.rewind.RewindScreen
-import it.fast4x.riplay.extensions.ritune.improved.RiTuneSelector
-import it.fast4x.riplay.ui.components.LocalGlobalSheetState
-import it.fast4x.riplay.ui.screens.events.EventsScreen
+import it.fast4x.riplay.ui.components.themed.SmartMessage
 import it.fast4x.riplay.ui.screens.moodandchip.ChipListScreen
+import it.fast4x.riplay.ui.screens.onboarding.OnboardingScreen
 import it.fast4x.riplay.ui.screens.ondevice.OnDevicePlaylistScreen
-import it.fast4x.riplay.ui.screens.player.controller.PlayerScreen
 import it.fast4x.riplay.utils.MusicIdentifier
+import kotlinx.serialization.ExperimentalSerializationApi
+import java.net.URLEncoder
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalAnimationApi::class,
     ExperimentalMaterialApi::class, ExperimentalTextApi::class, ExperimentalComposeUiApi::class,
-    ExperimentalMaterial3Api::class
+    ExperimentalMaterial3Api::class, ExperimentalSerializationApi::class
 )
 @UnstableApi
 @KotlinCsvExperimental
 @ExperimentalPermissionsApi
 @Composable
 fun AppNavigation(
-    navController: NavHostController,
     miniPlayer: @Composable () -> Unit = {},
-    openTabFromShortcut: Int
+    openTabFromShortcut: Int,
+    onNavControllerInit: (NavHostController) -> Unit
 ) {
+    val navController = rememberNavController()
+    onNavControllerInit(navController)
     val transitionEffect by rememberPreference(transitionEffectKey, TransitionEffect.Scale)
-
-    @Composable
-    fun customScaffold(content: @Composable () -> Unit) {
-        Scaffold(
-            bottomBar = {  }
-        ) { paddingValues ->
-            Surface(
-                modifier = Modifier.padding(paddingValues),
-                content = content
-            )
-        }
-    }
-
 
     @Composable
     fun modalBottomSheetPage(
@@ -126,13 +116,13 @@ fun AppNavigation(
 
         val thumbnailRoundness by rememberPreference(
             thumbnailRoundnessKey,
-            ThumbnailRoundness.Heavy
+            ThumbnailRoundness.Light
         )
 
         CustomModalBottomSheet(
             showSheet = showSheet == true,
             onDismissRequest = {
-                if (navController.currentBackStackEntry?.lifecycle?.currentState == Lifecycle.State.RESUMED)
+                //if (navController.currentBackStackEntry?.lifecycle?.currentState == Lifecycle.State.RESUMED)
                     navController.popBackStack()
             },
             containerColor = Color.Transparent,
@@ -153,9 +143,12 @@ fun AppNavigation(
     val context = LocalContext.current
     clearPreference(context, homeScreenTabIndexKey)
 
+    var showOnBoardingScreen by rememberPreference(showOnBoardingScreenKey, true)
+
+
     NavHost(
         navController = navController,
-        startDestination = NavRoutes.home.name,
+        startDestination = if (showOnBoardingScreen) NavRoutes.onBoarding.name else NavRoutes.home.name,
         enterTransition = {
             when (transitionEffect) {
                 TransitionEffect.None -> EnterTransition.None
@@ -207,15 +200,19 @@ fun AppNavigation(
             if (navController.currentBackStackEntry?.lifecycle?.currentState == Lifecycle.State.RESUMED) navController.popBackStack()
         }
 
-        composable(route = NavRoutes.ritunecontroller.name) {
-            modalBottomSheetPage {
-                RiTuneControllerScreen()
-            }
+        composable(route = NavRoutes.home.name) {
+            HomeScreen(
+                navController = navController,
+                onPlaylistUrl = navigateToPlaylist,
+                miniPlayer = miniPlayer,
+                openTabFromShortcut = openTabFromShortcut
+            )
         }
 
-        composable(route = NavRoutes.controller.name) {
-            modalBottomSheetPage {
-                PlayerScreen()
+        composable(route = NavRoutes.onBoarding.name) {
+            OnboardingScreen{
+                showOnBoardingScreen = false
+                navController.navigate(route = NavRoutes.home.name)
             }
         }
 
@@ -245,15 +242,6 @@ fun AppNavigation(
             modalBottomSheetPage {
                 ListenerLevelCharts()
             }
-        }
-
-        composable(route = NavRoutes.home.name) {
-            HomeScreen(
-                navController = navController,
-                onPlaylistUrl = navigateToPlaylist,
-                miniPlayer = miniPlayer,
-                openTabFromShortcut = openTabFromShortcut
-            )
         }
 
         composable(
@@ -428,31 +416,8 @@ fun AppNavigation(
         }
 
         composable(route = NavRoutes.blacklist.name) {
-            //modalBottomSheetPage {
-                BlacklistScreen(navController, miniPlayer)
-            //}
+            BlacklistScreen(navController, miniPlayer)
         }
-
-        /*
-        composable(
-            route = "settingsPage/{index}",
-            arguments = listOf(
-                navArgument(
-                    name = "index",
-                    builder = { type = NavType.IntType }
-                )
-            )
-        ) { navBackStackEntry ->
-            val index = navBackStackEntry.arguments?.getInt("index") ?: 0
-
-            PlayerScaffold {
-                SettingsPage(
-                    section = SettingsSection.entries[index],
-                    pop = popDestination
-                )
-            }
-        }
-         */
 
         composable(
             route = "${NavRoutes.search.name}?text={text}",
@@ -565,13 +530,6 @@ fun AppNavigation(
         composable(
             route = NavRoutes.moodsPage.name
         ) { navBackStackEntry ->
-            /*
-            SimpleScaffold(navController = navController) {
-                MoodsPage(
-                    navController = navController
-                )
-            }
-             */
             MoodsPageScreen(
                 navController = navController,
                 miniPlayer = miniPlayer,
@@ -612,15 +570,12 @@ fun AppNavigation(
                 initialTextInput = query ,
                 onViewPlaylist = {},
                 onSearch = { newQuery ->
-                    navController.navigate(route = "${NavRoutes.searchResults.name}/${
-                        cleanString(
-                            newQuery
-                        )
-                    }")
+                    val encodedQuery = URLEncoder.encode(newQuery, "UTF-8")
+                    navController.navigate(route = "${NavRoutes.searchResults.name}/${encodedQuery}")
 
                     if (!context.preferences.getBoolean(pauseSearchHistoryKey, false)) {
                         Database.asyncTransaction {
-                            insert(SearchQuery(query = newQuery))
+                            insert(SearchQuery(query = encodedQuery))
                         }
                     }
                 },

@@ -84,22 +84,28 @@ fun RotateThumbnailCover(
                 modifier = Modifier
                     .fillMaxSize()
                     .rotate(rotationDegrees)
-                    .aspectRatio(1.0f),
+                    .aspectRatio(1.0f)
+                    .align(Alignment.Center),
+
                 painter = painterResource(id = when (type) {
                     ThumbnailCoverType.Vinyl -> R.drawable.vinyl_background
-                    ThumbnailCoverType.CD, ThumbnailCoverType.CDwithCover -> R.drawable.cd
+                    ThumbnailCoverType.CD, ThumbnailCoverType.CDWithCover -> R.drawable.cd
+                    else -> R.drawable.vinyl_background
+
                 }),
                 contentDescription = "disc background"
             )
 
-        if (type in listOf(ThumbnailCoverType.Vinyl, ThumbnailCoverType.CDwithCover))
+        if (type in listOf(ThumbnailCoverType.Vinyl, ThumbnailCoverType.CDWithCover,
+                ThumbnailCoverType.Turntable))
             Image(
                 modifier = Modifier
                     .fillMaxSize(
                         when (type) {
                             ThumbnailCoverType.Vinyl -> imageCoverSize * 0.01f
                             ThumbnailCoverType.CD -> 1f
-                            ThumbnailCoverType.CDwithCover -> 0.85f
+                            ThumbnailCoverType.CDWithCover -> 0.85f
+                            else -> imageCoverSize * 0.01f
                         }
 
                     )
@@ -111,7 +117,7 @@ fun RotateThumbnailCover(
                 contentDescription = "song album cover"
             )
 
-        if (type == ThumbnailCoverType.CDwithCover) {
+        if (type == ThumbnailCoverType.CDWithCover) {
             Box(
                 modifier = Modifier
                     .clip(roundedShape)
@@ -193,7 +199,7 @@ fun RotateThumbnailCoverAnimationModern(
     isSongPlaying: Boolean = true,
     painter: Painter,
     state : PagerState,
-    it : Int,
+    pageIndex : Int,
     imageCoverSize : Float
 ) {
     var currentRotation by remember {
@@ -205,7 +211,7 @@ fun RotateThumbnailCoverAnimationModern(
     }
 
     LaunchedEffect(isSongPlaying, state.settledPage) {
-        if (isSongPlaying && it == state.settledPage) {
+        if (isSongPlaying && pageIndex == state.settledPage) {
             rotation.animateTo(
                 targetValue = currentRotation + 360f,
                 animationSpec = infiniteRepeatable(
@@ -216,7 +222,7 @@ fun RotateThumbnailCoverAnimationModern(
                 currentRotation = value
             }
         } else {
-            if (currentRotation > 0f && it == state.settledPage) {
+            if (currentRotation > 0f && pageIndex == state.settledPage) {
                 rotation.animateTo(
                     targetValue = currentRotation + 50,
                     animationSpec = tween(

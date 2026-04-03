@@ -33,6 +33,7 @@ import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -65,7 +66,6 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
-import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.PlayerConstants
 import it.fast4x.riplay.data.Database
 import it.fast4x.riplay.LocalPlayerServiceBinder
 import it.fast4x.riplay.R
@@ -100,7 +100,7 @@ import it.fast4x.riplay.extensions.preferences.effectRotationKey
 import it.fast4x.riplay.utils.getLikeState
 import it.fast4x.riplay.utils.intent
 import it.fast4x.riplay.utils.isExplicit
-import org.dailyislam.android.utilities.isNetworkConnected
+import it.fast4x.riplay.utils.isNetworkConnected
 import it.fast4x.riplay.utils.mediaItemToggleLike
 import it.fast4x.riplay.extensions.preferences.miniPlayerTypeKey
 import it.fast4x.riplay.utils.playNext
@@ -112,39 +112,41 @@ import it.fast4x.riplay.utils.PlayerViewModel
 import it.fast4x.riplay.utils.PlayerViewModelFactory
 import it.fast4x.riplay.commonutils.setDisLikeState
 import it.fast4x.riplay.commonutils.thumbnail
-import it.fast4x.riplay.extensions.ritune.improved.models.RiTuneRemoteCommand
+import it.fast4x.riplay.extensions.ritune.models.RiTuneRemoteCommand
+import it.fast4x.riplay.service.PlaybackState
 import it.fast4x.riplay.utils.GlobalSharedData
+import it.fast4x.riplay.utils.getRoundnessShape
 import it.fast4x.riplay.utils.removeFromOnlineLikedSong
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlin.math.absoluteValue
 
 @ExperimentalMaterial3Api
 @ExperimentalFoundationApi
+@ExperimentalSerializationApi
 @UnstableApi
 @Composable
 fun OnlineMiniPlayer(
     showPlayer: () -> Unit,
     hidePlayer: () -> Unit,
     navController: NavController? = null,
-    //player: MutableState<YouTubePlayer?>,
-    //playerState: MutableState<PlayerConstants.PlayerState>,
-    //currentDuration: Float,
-    //currentSecond: Float
+
 ) {
 
     val context = LocalContext.current
     val binder = LocalPlayerServiceBinder.current
-    var shouldBePlaying by remember { mutableStateOf(false) }
+
     val hapticFeedback = LocalHapticFeedback.current
 
     binder?.player ?: return
     if (binder.player.currentTimeline.windowCount == 0) return
 
-    val playerState = binder.onlinePlayerState
+    val playerState = binder.playerState.collectAsState()
+    val shouldBePlaying = playerState.value.isPlaying
 
     var nullableMediaItem by remember {
         mutableStateOf(binder.player.currentMediaItem, neverEqualPolicy())
@@ -197,7 +199,7 @@ fun OnlineMiniPlayer(
                     if (like(mediaItem.mediaId, setDisLikeState(likedAt)) == 0)
                         insert(mediaItem, Song::toggleDislike)
                     }
-                if (likedAt == null || likedAt!! > 0L)
+                if (likedAt == null || (likedAt ?: 0) > 0L)
                     SmartMessage(context.resources.getString(R.string.added_to_disliked), context = context)
                 else
                     SmartMessage(context.resources.getString(R.string.removed_from_disliked), context = context)
@@ -266,7 +268,7 @@ fun OnlineMiniPlayer(
     SwipeToDismissBox(
         modifier = Modifier
             .padding(horizontal = 16.dp)
-            .clip(RoundedCornerShape(12.dp)),
+            .clip(getRoundnessShape()),
         state = dismissState,
         backgroundContent = {
             /*
@@ -459,7 +461,7 @@ fun OnlineMiniPlayer(
                            .size(24.dp)
                    )
 
-                if (playerState != PlayerConstants.PlayerState.BUFFERING) {
+                if (playerState.value.playbackState != PlaybackState.BUFFERING) {
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(playPauseRoundness))
@@ -565,16 +567,16 @@ fun OnlineMiniPlayer(
 
         /********** NEW PLAYER */
 
-        LaunchedEffect(playerState) {
-            shouldBePlaying = playerState == PlayerConstants.PlayerState.PLAYING
-
-//            if (playerState.value == PlayerConstants.PlayerState.ENDED) {
-//                // TODO Implement repeat mode in queue
-//                if (getQueueLoopType() != QueueLoopType.Default)
-//                    player.value?.seekTo(0f)
-//            }
-
-        }
+//        LaunchedEffect(playerState) {
+//            shouldBePlaying = playerState == PlayerConstants.PlayerState.PLAYING
+//
+////            if (playerState.value == PlayerConstants.PlayerState.ENDED) {
+////                // TODO Implement repeat mode in queue
+////                if (getQueueLoopType() != QueueLoopType.Default)
+////                    player.value?.seekTo(0f)
+////            }
+//
+//        }
 
         var songIsAudioOnly by rememberSaveable {
             mutableStateOf<Boolean>(true)

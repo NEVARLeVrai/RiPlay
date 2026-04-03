@@ -59,7 +59,10 @@ import it.fast4x.riplay.utils.colorPalette
 import it.fast4x.riplay.utils.typography
 import it.fast4x.riplay.utils.LazyListContainer
 import it.fast4x.riplay.utils.forcePlay
+import kotlinx.serialization.ExperimentalSerializationApi
+import java.net.URLEncoder
 
+@ExperimentalSerializationApi
 @ExperimentalTextApi
 @SuppressLint("SuspiciousIndentation")
 @ExperimentalFoundationApi
@@ -175,7 +178,8 @@ fun GoToLink(
                                     }
 
                                     "search" -> uri.getQueryParameter("q")?.let { query ->
-                                        navController.navigate(route = "${NavRoutes.searchResults.name}/$query")
+                                        val encodedQuery = URLEncoder.encode(query, "UTF-8")
+                                        navController.navigate(route = "${NavRoutes.searchResults.name}/$encodedQuery")
                                     }
 
                                     else -> when {

@@ -74,7 +74,7 @@ import it.fast4x.riplay.utils.typography
 import it.fast4x.riplay.ui.components.themed.IconButton
 import it.fast4x.riplay.ui.components.themed.SelectorArtistsDialog
 import it.fast4x.riplay.ui.components.themed.SmartMessage
-import it.fast4x.riplay.ui.screens.player.local.bounceClick
+import it.fast4x.riplay.utils.bounceClick
 import it.fast4x.riplay.ui.screens.settings.isYtSyncEnabled
 import it.fast4x.riplay.ui.styling.favoritesIcon
 import it.fast4x.riplay.utils.horizontalfadingEdge2
@@ -88,7 +88,7 @@ import it.fast4x.riplay.extensions.preferences.effectRotationKey
 import it.fast4x.riplay.utils.getIconQueueLoopState
 import it.fast4x.riplay.utils.getLikeState
 import it.fast4x.riplay.utils.getUnlikedIcon
-import org.dailyislam.android.utilities.isNetworkConnected
+import it.fast4x.riplay.utils.isNetworkConnected
 import it.fast4x.riplay.extensions.preferences.jumpPreviousKey
 import it.fast4x.riplay.utils.mediaItemToggleLike
 import it.fast4x.riplay.utils.playNext
@@ -108,11 +108,13 @@ import it.fast4x.riplay.utils.removeFromOnlineLikedSong
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.serialization.ExperimentalSerializationApi
 
 
 @SuppressLint("UnusedBoxWithConstraintsScope")
 @UnstableApi
 @ExperimentalFoundationApi
+@ExperimentalSerializationApi
 @Composable
 fun InfoAlbumAndArtistEssential(
     binder: PlayerService.Binder,
@@ -428,6 +430,7 @@ fun InfoAlbumAndArtistEssential(
 
 @androidx.annotation.OptIn(UnstableApi::class)
 @OptIn(ExperimentalFoundationApi::class)
+@ExperimentalSerializationApi
 @Composable
 fun ControlsEssential(
     binder: PlayerService.Binder,

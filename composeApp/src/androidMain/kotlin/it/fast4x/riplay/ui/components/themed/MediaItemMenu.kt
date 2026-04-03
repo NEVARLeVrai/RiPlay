@@ -29,7 +29,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -139,16 +138,22 @@ import it.fast4x.riplay.utils.addSongToYtPlaylist
 import it.fast4x.riplay.utils.addToOnlineLikedSong
 import it.fast4x.riplay.utils.asSong
 import it.fast4x.riplay.utils.forcePlay
-import org.dailyislam.android.utilities.isNetworkConnected
+import it.fast4x.riplay.utils.isNetworkConnected
 import it.fast4x.riplay.utils.removeYTSongFromPlaylist
 import it.fast4x.riplay.utils.mediaItemToggleLike
 import it.fast4x.riplay.commonutils.setDisLikeState
 import it.fast4x.riplay.enums.ThumbnailRoundness
 import it.fast4x.riplay.extensions.preferences.thumbnailRoundnessKey
 import it.fast4x.riplay.ui.styling.secondary
+import it.fast4x.riplay.utils.SetupWriteSettingsPermission
+import it.fast4x.riplay.utils.getLocalFileUri
+import it.fast4x.riplay.utils.getRoundnessShape
 import it.fast4x.riplay.utils.removeFromOnlineLikedSong
+import it.fast4x.riplay.utils.setRingtoneSmart
+import kotlinx.serialization.ExperimentalSerializationApi
 import timber.log.Timber
 
+@ExperimentalSerializationApi
 @ExperimentalTextApi
 @ExperimentalAnimationApi
 @androidx.media3.common.util.UnstableApi
@@ -163,7 +168,7 @@ fun InHistoryMediaItemMenu(
     onSelectUnselect: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     disableScrollingText: Boolean,
-    onBlacklist: () -> Unit
+    onBlacklist: () -> Unit,
 ) {
 
     NonQueuedMediaItemMenu(
@@ -194,10 +199,11 @@ fun InHistoryMediaItemMenu(
         onSelectUnselect = onSelectUnselect,
         modifier = modifier,
         disableScrollingText = disableScrollingText,
-        onBlacklist = onBlacklist
+        onBlacklist = onBlacklist,
     )
 }
 
+@ExperimentalSerializationApi
 @ExperimentalTextApi
 @UnstableApi
 @ExperimentalAnimationApi
@@ -213,7 +219,7 @@ fun InPlaylistMediaItemMenu(
     onInfo: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     disableScrollingText: Boolean,
-    onBlacklist: (() -> Unit)? = null
+    onBlacklist: (() -> Unit)? = null,
 ) {
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -273,10 +279,11 @@ fun InPlaylistMediaItemMenu(
             onDismiss() },
         onInfo = onInfo,
         disableScrollingText = disableScrollingText,
-        onBlacklist = onBlacklist
+        onBlacklist = onBlacklist,
     )
 }
 
+@ExperimentalSerializationApi
 @ExperimentalTextApi
 @UnstableApi
 @ExperimentalAnimationApi
@@ -292,7 +299,7 @@ fun NonQueuedMediaItemMenuLibrary(
     onInfo: (() -> Unit)? = null,
     onSelectUnselect: (() -> Unit)? = null,
     disableScrollingText: Boolean,
-    onBlacklist: (() -> Unit)? = null
+    onBlacklist: (() -> Unit)? = null,
 ) {
     val binder = LocalPlayerServiceBinder.current
     val context = LocalContext.current
@@ -426,7 +433,7 @@ fun NonQueuedMediaItemMenuLibrary(
             onInfo = onInfo,
             onSelectUnselect = onSelectUnselect,
             disableScrollingText = disableScrollingText,
-            onBlacklist = onBlacklist
+            onBlacklist = onBlacklist,
         )
     }
 }
@@ -434,6 +441,7 @@ fun NonQueuedMediaItemMenuLibrary(
 @ExperimentalTextApi
 @UnstableApi
 @ExperimentalAnimationApi
+@ExperimentalSerializationApi
 @Composable
 fun NonQueuedMediaItemMenu(
     navController: NavController,
@@ -490,7 +498,7 @@ fun NonQueuedMediaItemMenu(
             onSelectUnselect = onSelectUnselect,
             modifier = modifier,
             disableScrollingText = disableScrollingText,
-            onBlacklist = onBlacklist
+            onBlacklist = onBlacklist,
         )
     } else {
 
@@ -521,11 +529,12 @@ fun NonQueuedMediaItemMenu(
             onSelectUnselect = onSelectUnselect,
             modifier = modifier,
             disableScrollingText = disableScrollingText,
-            onBlacklist = onBlacklist
+            onBlacklist = onBlacklist,
         )
     }
 }
 
+@ExperimentalSerializationApi
 @ExperimentalTextApi
 @UnstableApi
 @ExperimentalAnimationApi
@@ -540,7 +549,7 @@ fun QueuedMediaItemMenu(
     indexInQueue: Int?,
     modifier: Modifier = Modifier,
     disableScrollingText: Boolean,
-    onBlacklist: (() -> Unit)? = null
+    onBlacklist: (() -> Unit)? = null,
 ) {
     val binder = LocalPlayerServiceBinder.current
     val context = LocalContext.current
@@ -640,12 +649,12 @@ fun QueuedMediaItemMenu(
             onInfo = onInfo,
             onSelectUnselect = onSelectUnselect,
             disableScrollingText = disableScrollingText,
-            onBlacklist = onBlacklist
+            onBlacklist = onBlacklist,
         )
     }
 }
 
-
+@ExperimentalSerializationApi
 @ExperimentalTextApi
 @UnstableApi
 @ExperimentalAnimationApi
@@ -672,7 +681,7 @@ fun BaseMediaItemMenu(
     onInfo: (() -> Unit)?,
     onSelectUnselect: (() -> Unit)?,
     disableScrollingText: Boolean,
-    onBlacklist: (() -> Unit)?,
+    onBlacklist: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
 
@@ -752,7 +761,7 @@ fun BaseMediaItemMenu(
         onSelectUnselect = onSelectUnselect,
         modifier = modifier,
         disableScrollingText = disableScrollingText,
-        onBlacklist = onBlacklist
+        onBlacklist = onBlacklist,
     )
 
     FastShare(
@@ -763,6 +772,7 @@ fun BaseMediaItemMenu(
 
 }
 
+@ExperimentalSerializationApi
 @ExperimentalTextApi
 @UnstableApi
 @ExperimentalAnimationApi
@@ -775,7 +785,7 @@ fun MiniMediaItemMenu(
     onAddToPreferites: (() -> Unit)?,
     onInfo: (() -> Unit)?,
     modifier: Modifier = Modifier,
-    disableScrollingText: Boolean
+    disableScrollingText: Boolean,
 ) {
     val context = LocalContext.current
 
@@ -895,6 +905,7 @@ fun FolderItemMenu(
     }
 }
 
+@ExperimentalSerializationApi
 @ExperimentalTextApi
 @SuppressLint("SuspiciousIndentation")
 @UnstableApi
@@ -1076,7 +1087,7 @@ fun MediaItemMenu(
             LaunchedEffect(Unit, filter, playlistPreviews) {
                 Timber.d("MediaItemMenu filter $filter")
                 playlistPreviewsFiltered = if (filter != null)
-                playlistPreviews.filter { it.playlist.name.contains(filter!!, true) }
+                playlistPreviews.filter { it.playlist.name.contains(filter.toString(), true) }
                 else playlistPreviews
             }
 
@@ -1132,7 +1143,7 @@ fun MediaItemMenu(
 
             var thumbnailRoundness by rememberPreference(
                 thumbnailRoundnessKey,
-                ThumbnailRoundness.Heavy
+                ThumbnailRoundness.Light
             )
 
             Menu(
@@ -1926,7 +1937,7 @@ fun MediaItemMenu(
                                     modifier = modifier
                                         .background(
                                             color = colorPalette().background0,
-                                            shape = RoundedCornerShape(16.dp)
+                                            shape = getRoundnessShape()
                                         )
                                         .padding(horizontal = 16.dp, vertical = 8.dp)
                                         .animateContentSize()
@@ -2150,6 +2161,46 @@ fun MediaItemMenu(
                         }
                     )
                 }
+
+                if (isLocal) {
+
+                    MenuEntry(
+                        icon = R.drawable.ringtone,
+                        text = stringResource(R.string.set_as_ringtone),
+                        trailingContent = {
+                            SetupWriteSettingsPermission(
+                                onPermissionGranted = {}
+                            )
+                        },
+                        onClick = {
+                            CoroutineScope(Dispatchers.IO).launch {
+                                val fileUri =
+                                    getLocalFileUri(mediaItem.mediaId) ?: return@launch
+
+                                val success = setRingtoneSmart(
+                                    context = context,
+                                    sourceFileUri = fileUri
+                                )
+
+                                if (success)
+                                    SmartMessage(
+                                        context.resources.getString(R.string.ringtone_successfully_set),
+                                        context = context
+                                    )
+                                else
+                                    SmartMessage(
+                                        context.resources.getString(R.string.failed_to_set_ringtone),
+                                        type = PopupType.Warning,
+                                        context = context
+                                    )
+
+                            }
+                            onDismiss()
+                        }
+                    )
+
+                }
+
             }
         }
     }

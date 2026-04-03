@@ -128,9 +128,10 @@ import it.fast4x.riplay.ui.screens.settings.isYtSyncEnabled
 import it.fast4x.riplay.utils.LazyListContainer
 import it.fast4x.riplay.utils.addToYtPlaylist
 import it.fast4x.riplay.utils.toPlaylist
+import kotlinx.serialization.ExperimentalSerializationApi
 import timber.log.Timber
 
-
+@ExperimentalSerializationApi
 @ExperimentalTextApi
 @SuppressLint("SuspiciousIndentation")
 @ExperimentalFoundationApi
@@ -198,7 +199,7 @@ fun Podcast(
 
     var thumbnailRoundness by rememberPreference(
         thumbnailRoundnessKey,
-        ThumbnailRoundness.Heavy
+        ThumbnailRoundness.Light
     )
 
     val disableScrollingText by rememberPreference(disableScrollingTextKey, false)
@@ -299,7 +300,7 @@ fun Podcast(
                             if (podcastPage != null) {
                                 if (!isLandscape)
                                     AsyncImage(
-                                        model = podcastPage!!.thumbnail.firstOrNull()?.url?.resize(
+                                        model = podcastPage?.thumbnail?.firstOrNull()?.url?.resize(
                                             1200,
                                             900
                                         ),
@@ -332,7 +333,7 @@ fun Podcast(
                                 )
 
                                 BasicText(
-                                    text = podcastPage!!.listEpisode.size.toString()
+                                    text = podcastPage?.listEpisode?.size.toString()
                                             + " " + stringResource(R.string.songs),
                                             //+ " - " + formatAsTime(totalPlayTimes),
                                     style = typography().xs.medium,

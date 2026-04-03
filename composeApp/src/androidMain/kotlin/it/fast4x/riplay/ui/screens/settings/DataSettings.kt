@@ -76,7 +76,6 @@ import kotlin.compareTo
 @Composable
 fun DataSettings() {
     val context = LocalContext.current
-    val binder = LocalPlayerServiceBinder.current
 
     /*
     // single instance
@@ -292,7 +291,6 @@ fun DataSettings() {
                     placeholder = stringResource(R.string.enter_value_in_mb),
                     value = coilCustomDiskCache.toString(),
                     valueMin = "32",
-                    valueMax = "10000",
                     onDismiss = { showCoilCustomDiskCacheDialog = false },
                     setValue = {
                         //Log.d("customCache", it)

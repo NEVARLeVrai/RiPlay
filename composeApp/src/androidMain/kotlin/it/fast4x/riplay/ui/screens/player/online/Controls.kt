@@ -35,7 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.media3.common.MediaItem
 import androidx.media3.common.util.UnstableApi
 import androidx.navigation.NavController
-import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.PlayerConstants
+import it.fast4x.androidyoutubeplayer.core.player.PlayerConstants
 import it.fast4x.riplay.data.Database
 import it.fast4x.riplay.enums.ButtonState
 import it.fast4x.riplay.enums.PlayerControlsType
@@ -64,6 +64,7 @@ import it.fast4x.riplay.extensions.preferences.showlyricsthumbnailKey
 import it.fast4x.riplay.extensions.preferences.showthumbnailKey
 import it.fast4x.riplay.extensions.preferences.transparentBackgroundPlayerActionBarKey
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.serialization.ExperimentalSerializationApi
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -71,6 +72,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 @SuppressLint("SuspiciousIndentation")
 @ExperimentalFoundationApi
 @ExperimentalAnimationApi
+@ExperimentalSerializationApi
 @UnstableApi
 @Composable
 fun Controls(
@@ -103,16 +105,6 @@ fun Controls(
     onToggleLike: () -> Unit = {},
     playerState: PlayerConstants.PlayerState,
 ) {
-    //val binder = LocalPlayerServiceBinder.current
-    //binder?.player ?: return
-
-
-    var currentSong by remember { mutableStateOf<Song?>(null) }
-    LaunchedEffect(mediaItem.mediaId) {
-        Database.song(mediaItem.mediaId).distinctUntilChanged().collect {
-            currentSong = it
-        }
-    }
 
     var likedAt by rememberSaveable {
         mutableStateOf<Long?>(null)
@@ -137,15 +129,12 @@ fun Controls(
                 )
             )
     }
-    //val durationVisible by remember(isSeeking) { derivedStateOf { isSeeking } }
 
 
     LaunchedEffect(mediaItem.mediaId) {
         Database.likedAt(mediaItem.mediaId).distinctUntilChanged().collect { likedAt = it }
     }
 
-
-    //var showSelectDialog by remember { mutableStateOf(false) }
 
     var playerTimelineSize by rememberPreference(
         playerTimelineSizeKey,
@@ -161,7 +150,7 @@ fun Controls(
     var showlyricsthumbnail by rememberPreference(showlyricsthumbnailKey, false)
     var transparentBackgroundActionBarPlayer by rememberPreference(
         transparentBackgroundPlayerActionBarKey,
-        false
+        true
     )
     var playerControlsType by rememberPreference(playerControlsTypeKey, PlayerControlsType.Essential)
     var playerPlayButtonType by rememberPreference(playerPlayButtonTypeKey, PlayerPlayButtonType.Disabled)
@@ -220,12 +209,10 @@ fun Controls(
                     GetSeekBar(
                         position = position,
                         duration = duration,
-                        media = media,
                         mediaId = mediaItem.mediaId,
                         onSeekTo = onSeekTo,
                         onPlay = onPlay,
                         onPause = onPause,
-                        playerState = playerState
                     )
                     Spacer(
                         modifier = Modifier
@@ -309,12 +296,10 @@ fun Controls(
                     GetSeekBar(
                         position = position,
                         duration = duration,
-                        media = media,
                         mediaId = mediaItem.mediaId,
                         onSeekTo = onSeekTo,
                         onPlay = onPlay,
                         onPause = onPause,
-                        playerState = playerState
                     )
                     Spacer(
                         modifier = Modifier
@@ -362,12 +347,10 @@ fun Controls(
                     GetSeekBar(
                         position = position,
                         duration = duration,
-                        media = media,
                         mediaId = mediaItem.mediaId,
                         onSeekTo = onSeekTo,
                         onPlay = onPlay,
                         onPause = onPause,
-                        playerState = playerState
                     )
                     Spacer(
                         modifier = Modifier
@@ -426,12 +409,10 @@ fun Controls(
                 GetSeekBar(
                     position = position,
                     duration = duration,
-                    media = media,
                     mediaId = mediaItem.mediaId,
                     onSeekTo = onSeekTo,
                     onPlay = onPlay,
                     onPause = onPause,
-                    playerState = playerState
                 )
                 Spacer(
                     modifier = Modifier
@@ -485,12 +466,10 @@ fun Controls(
                 GetSeekBar(
                     position = position,
                     duration = duration,
-                    media = media,
                     mediaId = mediaItem.mediaId,
                     onSeekTo = onSeekTo,
                     onPlay = onPlay,
                     onPause = onPause,
-                    playerState = playerState
                 )
                 Spacer(
                     modifier = Modifier
@@ -502,96 +481,4 @@ fun Controls(
         }
 }
 
-fun Modifier.bounceClick() = composed {
-    var buttonState by remember { mutableStateOf(ButtonState.Idle) }
-    var buttonzoomout by rememberPreference(buttonzoomoutKey,false)
-    val scale by animateFloatAsState(if ((buttonState == ButtonState.Pressed) && (buttonzoomout)) 0.8f else 1f)
 
-    this
-        .graphicsLayer {
-            scaleX = scale
-            scaleY = scale
-        }
-        .pointerInput(buttonState) {
-            awaitPointerEventScope {
-                buttonState = if (buttonState == ButtonState.Pressed) {
-                    waitForUpOrCancellation()
-                    ButtonState.Idle
-                } else {
-                    awaitFirstDown(false)
-                    ButtonState.Pressed
-                }
-            }
-        }
-}
-
-
-/*
-@ExperimentalTextApi
-@ExperimentalAnimationApi
-@UnstableApi
-@Composable
-private fun PlayerMenu(
-    binder: PlayerService.Binder,
-    mediaItem: MediaItem,
-    onDismiss: () -> Unit
-) {
-    val context = LocalContext.current
-
-    val activityResultLauncher =
-        rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { }
-
-    BaseMediaItemMenu(
-        mediaItem = mediaItem,
-        onStartRadio = {
-            binder.stopRadio()
-            binder.player.seamlessPlay(mediaItem)
-            binder.setupRadio(NavigationEndpoint.Endpoint.Watch(videoId = mediaItem.mediaId))
-        },
-        onGoToEqualizer = {
-            try {
-                activityResultLauncher.launch(
-                    Intent(AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL).apply {
-                        putExtra(AudioEffect.EXTRA_AUDIO_SESSION, binder.player.audioSessionId)
-                        putExtra(AudioEffect.EXTRA_PACKAGE_NAME, context.packageName)
-                        putExtra(AudioEffect.EXTRA_CONTENT_TYPE, AudioEffect.CONTENT_TYPE_MUSIC)
-                    }
-                )
-            } catch (e: ActivityNotFoundException) {
-                context.toast("Couldn't find an application to equalize audio")
-            }
-        },
-        onShowSleepTimer = {},
-        onDismiss = onDismiss
-    )
-}
-
-@Composable
-private fun Duration(
-    position: Float,
-    duration: Long,
-) {
-    val typography = LocalAppearance.current.typography
-    Row(
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        BasicText(
-            text = formatAsDuration(position.toLong()),
-            style = typography.xxs.semiBold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-
-        if (duration != C.TIME_UNSET) {
-            BasicText(
-                text = formatAsDuration(duration),
-                style = typography.xxs.semiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-    }
-}
-*/

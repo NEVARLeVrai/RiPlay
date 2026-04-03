@@ -20,17 +20,18 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.requiredHeight
-import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PageSize
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
@@ -41,7 +42,16 @@ import androidx.compose.material.CheckboxDefaults
 import androidx.compose.material.Text
 import androidx.compose.material.TextField
 import androidx.compose.material.TextFieldDefaults
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
+import androidx.compose.material3.Surface
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -61,7 +71,6 @@ import androidx.compose.ui.geometry.center
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Shadow
-import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
@@ -76,7 +85,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.times
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.media3.common.PlaybackParameters
@@ -149,12 +157,12 @@ import it.fast4x.riplay.extensions.preferences.bassboostLevelKey
 import it.fast4x.riplay.extensions.preferences.disableScrollingTextKey
 import it.fast4x.riplay.utils.isValidHex
 import it.fast4x.riplay.utils.isValidHttpUrl
-import it.fast4x.riplay.utils.isValidUrl
 import it.fast4x.riplay.extensions.preferences.lyricsSizeKey
 import it.fast4x.riplay.extensions.preferences.lyricsSizeLKey
 import it.fast4x.riplay.utils.removeYTSongFromPlaylist
 import it.fast4x.riplay.extensions.preferences.thumbnailFadeExKey
 import it.fast4x.riplay.extensions.preferences.thumbnailSpacingLKey
+import it.fast4x.riplay.utils.getRoundnessShape
 import it.fast4x.riplay.utils.getUpdateDownloadUrl
 import it.fast4x.riplay.utils.isLocal
 import kotlinx.coroutines.CoroutineScope
@@ -163,7 +171,83 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.ExperimentalSerializationApi
 
+
+@Composable
+fun ConfirmationDialog(
+    text: String,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+    onCheckBox: (Boolean) -> Unit = {},
+    modifier: Modifier = Modifier,
+    cancelText: String = stringResource(R.string.cancel),
+    confirmText: String = stringResource(R.string.confirm),
+    checkBoxText: String = "",
+    onCancel: () -> Unit = onDismiss,
+    cancelBackgroundPrimary: Boolean = false,
+    confirmBackgroundPrimary: Boolean = true
+) {
+
+    var checkedState by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = colorPalette().background1,
+        modifier = modifier,
+
+        text = {
+            Column {
+                Text(
+                    text = text,
+                    style = typography().m
+                )
+
+                if (checkBoxText.isNotEmpty()) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(top = 16.dp)
+                    ) {
+                        Checkbox(
+                            checked = checkedState,
+                            onCheckedChange = {
+                                checkedState = it
+                                onCheckBox(it)
+                            }
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = checkBoxText,
+                            style = typography().xs.medium
+                        )
+                    }
+                }
+            }
+        },
+
+        confirmButton = {
+            DialogTextButton(
+                text = confirmText,
+                primary = confirmBackgroundPrimary,
+                onClick = {
+                    onConfirm()
+                    onDismiss()
+                }
+            )
+        },
+
+
+        dismissButton = {
+            DialogTextButton(
+                text = cancelText,
+                primary = cancelBackgroundPrimary,
+                onClick = onCancel
+            )
+        }
+    )
+}
+
+/*
 @Composable
 fun ConfirmationDialog(
     text: String,
@@ -245,6 +329,7 @@ fun ConfirmationDialog(
         }
     }
 }
+*/
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -264,7 +349,7 @@ inline fun DefaultDialog(
                 .padding(all = 10.dp)
                 .background(
                     color = colorPalette().background1,
-                    shape = RoundedCornerShape(8.dp)
+                    shape = getRoundnessShape()
                 )
                 .padding(horizontal = 24.dp, vertical = 16.dp),
             content = content
@@ -272,6 +357,111 @@ inline fun DefaultDialog(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun <T> ValueSelectorDialog(
+    modifier: Modifier = Modifier,
+    onDismiss: () -> Unit,
+    title: String,
+    titleSecondary: String? = null,
+    selectedValue: T,
+    values: List<T>,
+    onValueSelected: (T) -> Unit,
+    valueText: @Composable (T) -> String = { it.toString() }
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            modifier = modifier,
+            shape = getRoundnessShape(),
+            tonalElevation = 6.dp,
+            color = colorPalette().background1
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(vertical = 24.dp)
+            ) {
+                // Header
+                Text(
+                    text = title,
+                    style = typography().s.semiBold,
+                    modifier = Modifier.padding(horizontal = 24.dp)
+                )
+
+                if (titleSecondary != null) {
+                    Text(
+                        text = titleSecondary,
+                        style = typography().xxs.semiBold,
+                        color = colorPalette().background1,
+                        modifier = Modifier.padding(horizontal = 24.dp).padding(top = 8.dp)
+                    )
+                }
+
+                // Divider
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 12.dp),
+                    color = colorPalette().accent
+                )
+
+                // List
+                Column(
+                    modifier = Modifier
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    values.forEach { value ->
+                        val isSelected = selectedValue == value
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .selectable(
+                                    selected = isSelected,
+                                    onClick = {
+                                        onValueSelected(value)
+                                        onDismiss()
+                                    },
+                                    role = androidx.compose.ui.semantics.Role.RadioButton
+                                )
+                                .padding(horizontal = 24.dp, vertical = 8.dp)
+                        ) {
+
+                            RadioButton(
+                                selected = isSelected,
+                                onClick = null,
+                                colors = RadioButtonDefaults.colors(
+                                    selectedColor = colorPalette().accent,
+                                    unselectedColor = colorPalette().text
+                                )
+                            )
+
+                            Spacer(Modifier.width(12.dp))
+
+                            Text(
+                                text = valueText(value),
+                                style = typography().xs.medium.merge(
+                                    TextStyle(color = if (isSelected) colorPalette().accent else colorPalette().text)
+                                )
+                            )
+                        }
+                    }
+                }
+
+                // Footer
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.End)
+                        .padding(end = 24.dp, top = 12.dp)
+                ) {
+                    TextButton (onClick = onDismiss) {
+                        Text(stringResource(R.string.cancel), color = colorPalette().text)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/*
 @Composable
 fun <T> ValueSelectorDialog(
     modifier: Modifier = Modifier,
@@ -377,7 +567,92 @@ fun <T> ValueSelectorDialog(
         }
     }
 }
+*/
 
+@Composable
+fun SelectorDialog(
+    onDismiss: () -> Unit,
+    title: String,
+    values: List<Info>?,
+    onValueSelected: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    showItemsIcon: Boolean = false
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            modifier = modifier,
+            shape = RoundedCornerShape(8.dp),
+            tonalElevation = 6.dp,
+            color = colorPalette().background1
+        ) {
+            Column(
+                modifier = Modifier.padding(vertical = 24.dp)
+            ) {
+                // Title
+                Text(
+                    text = title,
+                    style =  typography().s.semiBold,
+                    modifier = Modifier.padding(horizontal = 24.dp)
+                )
+
+                // Divider
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 12.dp),
+                    color = colorPalette().accent
+                )
+
+                // List
+                Column(
+                    modifier = Modifier
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    values?.distinct()?.forEach { value ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    onValueSelected(value.id)
+                                    onDismiss()
+                                }
+                                .padding(horizontal = 24.dp, vertical = 12.dp)
+                        ) {
+                            if (showItemsIcon) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.playlist),
+                                    contentDescription = null,
+                                    tint = colorPalette().text,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(Modifier.width(12.dp))
+                            }
+
+                            Text(
+                                text = value.name ?: "Not selectable",
+                                style = typography().xs.medium,
+                                maxLines = 3,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
+
+                // Footer
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.End)
+                        .padding(end = 24.dp, top = 8.dp)
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text(stringResource(R.string.cancel), color = colorPalette().text)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/*
 @Composable
 inline fun SelectorDialog(
     noinline onDismiss: () -> Unit,
@@ -454,6 +729,167 @@ inline fun SelectorDialog(
     }
 }
 
+ */
+@ExperimentalSerializationApi
+@Composable
+fun SelectorArtistsDialog(
+    onDismiss: () -> Unit,
+    title: String,
+    values: List<Info>?,
+    onValueSelected: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val configuration = LocalConfiguration.current
+    val screenWidth = configuration.screenWidthDp.dp
+    val screenHeight = configuration.screenHeightDp.dp
+
+    val dialogSize = if (isLandscape) (screenHeight * 0.85f) else (screenWidth * 0.85f)
+
+    val thumbnailRoundness by rememberPreference(thumbnailRoundnessKey, ThumbnailRoundness.Light)
+    val colorPaletteMode by rememberPreference(colorPaletteModeKey, ColorPaletteMode.Dark)
+
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            modifier = modifier
+                .size(dialogSize)
+                .clip(thumbnailRoundness.shape()),
+            color = colorPalette().background1,
+            tonalElevation = 8.dp
+        ) {
+            if (values != null) {
+                val pagerState = rememberPagerState(pageCount = { values.size })
+
+                Box {
+                    HorizontalPager(state = pagerState) { pageIndex ->
+                        val browseId = values[pageIndex].id
+
+                        var artist by persist<Artist?>("artist/$browseId/artist")
+
+                        LaunchedEffect(browseId) {
+                            Database.artist(browseId).collect { artist = it }
+                        }
+
+                        LaunchedEffect(Unit) {
+                            if (artist?.thumbnailUrl == null) {
+                                withContext(Dispatchers.IO) {
+                                    EnvironmentExt.getArtistPage(browseId = browseId)
+                                        .onSuccess { page ->
+                                            artist?.copy(thumbnailUrl = page.artist.thumbnail?.url)
+                                                ?.let(::update)
+
+                                            Database.artist(browseId).collect { artist = it }
+                                        }
+                                }
+                            }
+                        }
+
+                        Box {
+                            AsyncImage(
+                                model = ImageRequest.Builder(LocalContext.current)
+                                    .data(artist?.thumbnailUrl?.resize(1200, 1200))
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = values[pageIndex].name,
+                                contentScale = ContentScale.Fit,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clickable {
+                                        onDismiss()
+                                        onValueSelected(browseId)
+                                    }
+                            )
+
+                            // Badge
+                            if (artist?.isYoutubeArtist == true) {
+                                Image(
+                                    painter = painterResource(R.drawable.internet),
+                                    contentDescription = "Youtube Artist",
+                                    colorFilter = ColorFilter.tint(
+                                        Color.Red.copy(alpha = 0.75f).compositeOver(Color.White)
+                                    ),
+                                    modifier = Modifier
+                                        .padding(10.dp)
+                                        .size(32.dp)
+                                        .align(Alignment.TopStart)
+                                )
+                            }
+
+
+                            values[pageIndex].name?.let { name ->
+                                val cleanName = cleanPrefix(name)
+                                val textStyle = typography().xs.medium
+
+                                val strokeColor = if (colorPaletteMode == ColorPaletteMode.Light ||
+                                    (colorPaletteMode == ColorPaletteMode.System && !isSystemInDarkTheme())) {
+                                    Color.White.copy(alpha = 0.5f)
+                                } else {
+                                    Color.Black
+                                }
+
+                                Box(modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .padding(bottom = 24.dp)
+                                    .padding(horizontal = 16.dp)
+                                ) {
+
+                                    Text(
+                                        text = cleanName,
+                                        style = textStyle.merge(
+                                            TextStyle(
+                                                drawStyle = Stroke(
+                                                    width = 5f,
+                                                    pathEffect = null
+                                                ),
+                                                color = strokeColor
+                                            )
+                                        ),
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis,
+                                        textAlign = TextAlign.Center
+                                    )
+
+                                    Text(
+                                        text = cleanName,
+                                        style = textStyle.merge(TextStyle(color = (colorPalette().text))),
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis,
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Pages navigation
+                    Row(
+                        Modifier
+                            .height(20.dp)
+                            .fillMaxWidth()
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 8.dp),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        repeat(values.size) { iteration ->
+                            val isSelected = pagerState.currentPage == iteration
+                            val color = if (isSelected) colorPalette().text
+                            else colorPalette().text.copy(alpha = 0.3f)
+
+                            Box(
+                                modifier = Modifier
+                                    .padding(horizontal = 4.dp)
+                                    .clip(CircleShape)
+                                    .background(color)
+                                    .size(if (isSelected) 10.dp else 8.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/*
 @Composable
 inline fun SelectorArtistsDialog(
     noinline onDismiss: () -> Unit,
@@ -582,7 +1018,119 @@ inline fun SelectorArtistsDialog(
         }
     }
 }
+*/
 
+@Composable
+fun InputNumericDialog(
+    onDismiss: () -> Unit,
+    title: String,
+    value: String,
+    valueMin: String,
+    placeholder: String,
+    setValue: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+
+    var text by remember { mutableStateOf(value) }
+
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    val errorEmpty = stringResource(R.string.value_cannot_be_empty)
+    val errorGreater = stringResource(R.string.value_must_be_greater_than)
+
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            modifier = modifier,
+            shape = RoundedCornerShape(8.dp),
+            tonalElevation = 6.dp,
+            color = colorPalette().background1
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(24.dp)
+                    .widthIn(min = 280.dp)
+            ) {
+                // Title
+                Text(
+                    text = title,
+                    style = typography().s.semiBold,
+                    color = colorPalette().text
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Input
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = {
+                        text = it.take(10)
+                        errorMessage = null
+                    },
+                    label = { Text(placeholder) },
+                    isError = errorMessage != null,
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth(),
+                    supportingText = {
+                        errorMessage?.let {
+                            Text(
+                                text = it,
+                                color = colorPalette().red,
+                            )
+                        }
+                    },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = colorPalette().accent,
+                        unfocusedBorderColor = colorPalette().textDisabled,
+                        cursorColor = colorPalette().text,
+                        focusedTextColor = colorPalette().text,
+                        unfocusedTextColor = colorPalette().text
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text(stringResource(R.string.cancel))
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    TextButton(
+                        onClick = {
+
+                            val numericValue = text.toIntOrNull()
+
+                            when {
+                                text.isEmpty() -> {
+                                    errorMessage = errorEmpty
+                                }
+                                numericValue == null -> {
+                                    errorMessage = errorEmpty
+                                }
+                                numericValue < (valueMin.toIntOrNull() ?: 0) -> {
+                                    errorMessage = "$errorGreater $valueMin"
+                                }
+                                else -> {
+                                    setValue(text)
+                                    onDismiss()
+                                }
+                            }
+                        }
+                    ) {
+                        Text(stringResource(R.string.confirm), color = colorPalette().text)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/*
 @Composable
 inline fun InputNumericDialog(
     noinline onDismiss: () -> Unit,
@@ -717,7 +1265,160 @@ inline fun InputNumericDialog(
     }
 
 }
+*/
 
+@Composable
+fun InputTextDialog(
+    modifier: Modifier = Modifier,
+    onDismiss: () -> Unit,
+    title: String,
+    value: String,
+    setValueRequireNotNull: Boolean = true,
+    placeholder: String,
+    setValue: (String) -> Unit,
+    validationType: ValidationType = ValidationType.None,
+    prefix: String = "",
+) {
+
+    var text by remember { mutableStateOf(cleanPrefix(value)) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    var usePrefix by remember { mutableStateOf(value.startsWith(prefix)) }
+
+    val errorEmpty = stringResource(R.string.value_cannot_be_empty)
+    val errorIp = stringResource(R.string.value_must_be_ip_address)
+    val errorHex = stringResource(R.string.value_must_be_hex)
+    val errorUrl = stringResource(R.string.value_must_be_valid_url)
+
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            modifier = modifier,
+            shape = RoundedCornerShape(8.dp),
+            tonalElevation = 6.dp,
+            color = colorPalette().background1
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(24.dp)
+                    .widthIn(min = 280.dp)
+            ) {
+                // Title
+                Text(
+                    text = title,
+                    style = typography().s.semiBold,
+                    color = colorPalette().text
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Input
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = {
+                        text = it
+                        errorMessage = null
+                    },
+                    label = { Text(placeholder) },
+                    isError = errorMessage != null,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 56.dp),
+                    maxLines = 5,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = if (validationType == ValidationType.Ip)
+                            KeyboardType.Number else KeyboardType.Text
+                    ),
+                    supportingText = {
+                        errorMessage?.let { error ->
+                            Text(
+                                text = error,
+                                color = colorPalette().red,
+                            )
+                        }
+                    },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = colorPalette().accent,
+                        unfocusedBorderColor = colorPalette().textDisabled,
+                        cursorColor = colorPalette().text,
+                        focusedTextColor = colorPalette().text,
+                        unfocusedTextColor = colorPalette().text
+                    )
+                )
+
+                // Checkbox
+                if (prefix.isNotEmpty()) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(top = 8.dp)
+                    ) {
+                        Checkbox(
+                            checked = usePrefix,
+                            onCheckedChange = { usePrefix = it }
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = stringResource(R.string.set_custom_value),
+                            style = typography().xs.medium
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text(stringResource(R.string.cancel), color = colorPalette().text)
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    TextButton(
+                        onClick = {
+
+                            val currentValue = text.trim()
+
+                            when {
+                                // 1. Check empty
+                                (currentValue.isEmpty() && setValueRequireNotNull) -> {
+                                    errorMessage = errorEmpty
+                                }
+                                // 2. Check IP
+                                (validationType == ValidationType.Ip && currentValue.isNotEmpty() && !isValidIP(currentValue)) -> {
+                                    errorMessage = errorIp
+                                }
+                                // 3. Check Hex
+                                (validationType == ValidationType.Hex && currentValue.isNotEmpty() && !isValidHex(currentValue)) -> {
+                                    errorMessage = errorHex
+                                }
+                                // 4. Check URL
+                                (validationType == ValidationType.Url && currentValue.isNotEmpty() && !isValidHttpUrl(currentValue)) -> {
+                                    errorMessage = errorUrl
+                                }
+                                // 5. Success
+                                else -> {
+                                    val finalValue = if (usePrefix && prefix.isNotEmpty()) {
+                                        prefix + cleanPrefix(currentValue)
+                                    } else {
+                                        cleanPrefix(currentValue)
+                                    }
+                                    setValue(finalValue)
+                                    onDismiss()
+                                }
+                            }
+                        }
+                    ) {
+                        Text(stringResource(R.string.confirm), color = colorPalette().text)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/*
 @Composable
 inline fun InputTextDialog(
     modifier: Modifier = Modifier,
@@ -901,6 +1602,9 @@ inline fun InputTextDialog(
 
 }
 
+ */
+
+
 @Composable
 inline fun StringListDialog(
     title: String,
@@ -1078,6 +1782,7 @@ inline fun StringListDialog(
     }
 
 }
+
 
 @Composable
 fun NewVersionDialog (
@@ -1783,6 +2488,7 @@ fun InProgressDialog(
     }
 }
 
+@ExperimentalSerializationApi
 @androidx.annotation.OptIn(UnstableApi::class)
 @Composable
 fun SongMatchingDialog(

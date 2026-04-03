@@ -67,7 +67,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.exoplayer.offline.Download
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import it.fast4x.riplay.extensions.persist.persist
@@ -147,20 +146,20 @@ import it.fast4x.riplay.ui.styling.align
 import it.fast4x.riplay.utils.asPlaylist
 import it.fast4x.riplay.ui.styling.color
 import it.fast4x.riplay.utils.formatAsDuration
-import org.dailyislam.android.utilities.getHttpClient
-import org.dailyislam.android.utilities.isNetworkConnected
+import it.fast4x.riplay.utils.isNetworkConnected
 import it.fast4x.riplay.utils.languageDestination
 import it.fast4x.riplay.utils.mediaItemSetLiked
 import it.fast4x.riplay.commonutils.setLikeState
-import it.fast4x.riplay.data.models.Song
 import it.fast4x.riplay.ui.components.themed.FastPlayActionsBar
 import it.fast4x.riplay.ui.components.themed.LoaderScreen
 import kotlinx.coroutines.flow.filterNotNull
-import me.bush.translator.Language
-import me.bush.translator.Translator
+import kotlinx.serialization.ExperimentalSerializationApi
+import dev.rebelonion.translator.Language
+import dev.rebelonion.translator.Translator
+import it.fast4x.riplay.utils.CustomHttpClient
 import timber.log.Timber
 
-
+@ExperimentalSerializationApi
 @ExperimentalTextApi
 @SuppressLint("SuspiciousIndentation")
 @ExperimentalFoundationApi
@@ -199,7 +198,7 @@ fun PlaylistSongList(
         mutableStateOf(false)
     }
 
-    val translator = Translator(getHttpClient())
+    val translator =  Translator(CustomHttpClient.okHttpClient)
     val languageDestination = languageDestination()
 
     var localPlaylist by remember { mutableStateOf<Playlist?>(null) }
@@ -253,7 +252,7 @@ fun PlaylistSongList(
                     filterCharSequence,
                     true
                 ) ?: false
-            }!!
+            } ?: emptyList()
     } else playlistPage?.songs = playlistSongs
 
     var playlistNotLikedSongs by persistList<Environment.SongItem>("")
@@ -269,7 +268,7 @@ fun PlaylistSongList(
 
     var thumbnailRoundness by rememberPreference(
         thumbnailRoundnessKey,
-        ThumbnailRoundness.Heavy
+        ThumbnailRoundness.Light
     )
 
     var showYoutubeLikeConfirmDialog by remember {
@@ -397,7 +396,7 @@ fun PlaylistSongList(
                                 if (!isLandscape)
                                     Box {
                                         AsyncImage(
-                                            model = playlistPage!!.playlist.thumbnail?.url?.resize(
+                                            model = playlistPage?.playlist?.thumbnail?.url?.resize(
                                                 1200,
                                                 1200
                                             ),
@@ -443,7 +442,7 @@ fun PlaylistSongList(
                                 )
 
                                 BasicText(
-                                    text = playlistPage!!.songs?.size.toString() + " "
+                                    text = playlistPage?.songs?.size.toString() + " "
                                             + stringResource(R.string.songs)
                                             + " - " + formatAsTime(totalPlayTimes),
                                     style = typography().xs.medium,
@@ -694,7 +693,7 @@ fun PlaylistSongList(
                                                                     type = PopupType.Error
                                                                 )
                                                             } else if (!isYtSyncEnabled() || !playlistPreview.playlist.isYoutubePlaylist) {
-                                                                playlistPage!!.songs.forEachIndexed { index, song ->
+                                                                playlistPage?.songs?.forEachIndexed { index, song ->
                                                                     runCatching {
                                                                         coroutineScope.launch(
                                                                             Dispatchers.IO
@@ -766,12 +765,12 @@ fun PlaylistSongList(
                                                     )
                                                 } else if (!isYtSyncEnabled()) {
                                                     Database.asyncTransaction {
-                                                        playlistPage!!.songs.filter {
+                                                        playlistPage?.songs?.filter {
                                                             getLikedAt(it.asMediaItem.mediaId) in listOf(
                                                                 -1L,
                                                                 null
                                                             )
-                                                        }.forEachIndexed { _, song ->
+                                                        }?.forEachIndexed { _, song ->
                                                             mediaItemSetLiked(song.asMediaItem)
                                                         }
                                                         SmartMessage(

@@ -12,7 +12,6 @@ import com.my.kizzyrpc.model.Activity
 import com.my.kizzyrpc.model.Assets
 import com.my.kizzyrpc.model.Metadata
 import com.my.kizzyrpc.model.Timestamps
-import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.PlayerConstants
 import io.ktor.client.call.body
 import io.ktor.client.request.forms.formData
 import io.ktor.client.request.forms.submitFormWithBinaryData
@@ -52,7 +51,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.putJsonArray
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import org.dailyislam.android.utilities.isNetworkConnected
+import it.fast4x.riplay.utils.isNetworkConnected
 import org.jetbrains.annotations.Contract
 import timber.log.Timber
 import java.io.IOException
@@ -491,7 +490,7 @@ fun updateDiscordPresenceWithOfflinePlayer(
 fun updateDiscordPresenceWithOnlinePlayer(
     discordPresenceManager: DiscordPresenceManager?,
     mediaItem: MediaItem,
-    playerState: MutableState<PlayerConstants.PlayerState>,
+    isPlaying: Boolean,
     currentDuration: Float,
     currentSecond: Float,
 ) {
@@ -504,7 +503,6 @@ fun updateDiscordPresenceWithOnlinePlayer(
     val discordPersonalAccessToken = globalContext().encryptedPreferences.getString(
         discordPersonalAccessTokenKey, ""
     )
-    val isPlaying = playerState.value == PlayerConstants.PlayerState.PLAYING
     val currentPosition = (currentSecond * 1000).toLong()
     runCatching {
         if (!discordPersonalAccessToken.isNullOrEmpty()) {

@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -80,6 +79,9 @@ import it.fast4x.riplay.ui.styling.semiBold
 import it.fast4x.riplay.utils.forcePlay
 import it.fast4x.riplay.utils.shimmerEffect
 import it.fast4x.riplay.commonutils.thumbnail
+import it.fast4x.riplay.utils.getRoundnessShape
+import it.fast4x.riplay.utils.isRelated
+import kotlinx.serialization.ExperimentalSerializationApi
 
 
 @UnstableApi
@@ -110,10 +112,6 @@ fun SongItem(
     onThumbnailContent: (@Composable BoxScope.() -> Unit)? = null,
     trailingContent: (@Composable () -> Unit)? = null,
     isRecommended: Boolean = false,
-    //disableScrollingText: Boolean,
-    //isNowPlaying: Boolean = false,
-    //isLocal: Boolean = false,
-    //forceRecompose: Boolean = false
 ) {
     SongItem(
         thumbnailUrl = song.mediaMetadata.artworkUri.toString().thumbnail(thumbnailSizePx)?.toString(),
@@ -123,10 +121,6 @@ fun SongItem(
         modifier = modifier,
         isRecommended = isRecommended,
         mediaItem = song,
-        //disableScrollingText = disableScrollingText,
-        //isNowPlaying = isNowPlaying,
-        //isLocal = isLocal,
-        //forceRecompose = forceRecompose
     )
 }
 
@@ -150,6 +144,7 @@ fun SongItem(
     )
 }
 
+@OptIn(ExperimentalSerializationApi::class)
 @UnstableApi
 @Composable
 fun SongItem(
@@ -194,6 +189,7 @@ fun SongItem(
     ExperimentalAnimationApi::class
 )
 @UnstableApi
+@ExperimentalSerializationApi
 @Composable
 fun SongItem(
     thumbnailContent: @Composable BoxScope.() -> Unit,
@@ -204,7 +200,6 @@ fun SongItem(
     mediaItem: MediaItem,
 ) {
 
-    val mediaId = mediaItem.mediaMetadata.extras?.getString("mediaId") // is online id used to identify source from local songs
     val title = mediaItem.mediaMetadata.title.toString()
     val authors = mediaItem.mediaMetadata.artist.toString()
     val duration = mediaItem.mediaMetadata.extras?.getString("durationText")
@@ -231,7 +226,7 @@ fun SongItem(
         thumbnailSizeDp = thumbnailSizeDp,
         modifier = modifier
             .padding(end = 8.dp)
-            .clip(RoundedCornerShape(10.dp))
+            .clip(getRoundnessShape())
             .applyIf(isNowPlaying == true) {
                 background(colorPalette.favoritesOverlay)
             }
@@ -316,6 +311,17 @@ fun SongItem(
                             modifier = Modifier
                                 .size(18.dp)
                         )
+
+                    if (mediaItem.isRelated)
+                        IconButton(
+                            icon = R.drawable.circle_arrow,
+                            color = colorPalette().accent,
+                            enabled = true,
+                            onClick = {},
+                            modifier = Modifier
+                                .size(14.dp)
+                        )
+
 
                     if (playlistindicator && (songPlaylist.value > 0)) {
                         IconButton(
@@ -414,6 +420,16 @@ fun SongItem(
                         onClick = {},
                         modifier = Modifier
                             .size(18.dp)
+                    )
+
+                if (mediaItem.isRelated)
+                    IconButton(
+                        icon = R.drawable.circle_arrow,
+                        color = colorPalette().accent,
+                        enabled = true,
+                        onClick = {},
+                        modifier = Modifier
+                            .size(14.dp)
                     )
 
                 if ( mediaItem.isExplicit )
@@ -567,7 +583,7 @@ fun SongItemPlaceholder( thumbnailSizeDp: Dp ) {
     ) {
         Box(
             Modifier.size( thumbnailSizeDp )
-                    .clip( RoundedCornerShape(12.dp) )
+                    .clip( getRoundnessShape() )
                     .shimmerEffect()
         )
 

@@ -151,6 +151,10 @@ kotlin {
                 implementation(compose.components.resources)
                 implementation(compose.components.uiToolingPreview)
 
+                implementation(libs.ktor.client.core)
+                implementation(libs.ktor.client.okhttp)
+                implementation(libs.ktor.client.websockets)
+
                 implementation(project(":environment"))
                 implementation(project(":kugou"))
                 implementation(project(":lrclib"))
@@ -258,19 +262,18 @@ kotlin {
             implementation(libs.math3)
             implementation(libs.toasty)
             implementation(libs.haze)
-            implementation(libs.androidyoutubeplayer)
-            implementation(libs.androidyoutubeplayer.custom.ui)
+            //implementation(libs.androidyoutubeplayer) // replaced by project ayp
+            //implementation(libs.androidyoutubeplayer.custom.ui) // replaced by project aypui
+            implementation(project(":ayp"))
+            implementation(project(":aypui"))
             implementation(libs.glance.widgets)
             implementation(libs.kizzy.rpc)
             implementation(libs.gson)
             implementation(libs.hypnoticcanvas)
             implementation(libs.hypnoticcanvas.shaders)
-            implementation(libs.ktor.client.core)
-            implementation(libs.ktor.client.okhttp)
-            implementation(libs.ktor.client.websockets)
             implementation(libs.multidex)
             implementation(libs.jsoup)
-
+            //implementation(libs.mediarouter)
         }
 
     }
@@ -312,8 +315,8 @@ android {
         applicationId = "it.fast4x.riplay"
         minSdk = 24
         targetSdk = 36
-        versionCode = 67
-        versionName = "0.7.67"
+        versionCode = 72
+        versionName = "0.7.72"
 
         multiDexEnabled = true
 
@@ -600,7 +603,7 @@ android {
             manifestPlaceholders["appName"] = "RiPlay"
             signingConfig = signingConfigs.getByName("release")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            multiDexKeepProguard = File("multidex-config.txt")
+            multiDexKeepProguard = File("multidex-config.pro")
         }
     }
 
@@ -634,12 +637,6 @@ android {
             buildConfigField("String", "BUILD_VARIANT", "\"foss\"")
         }
     }
-
-//    tasks.withType<KotlinCompile> {
-//        if (name.substringAfter("compile").lowercase().startsWith("fdroid")) {
-//            exclude("**/extensions/chromecast/**")
-//        }
-//    }
 
     applicationVariants.all {
         val variant = this
@@ -727,18 +724,8 @@ room {
 
 dependencies {
 
-    listOf(
-        "kspAndroid",
-        "ksp",
-        //"kspIosSimulatorArm64",
-        //"kspIosX64",
-        //"kspIosArm64"
-    ).forEach {
-        add(it, libs.room.compiler)
-    }
-
     add("kspAndroid", libs.room.compiler)
-    add("ksp", libs.room.compiler)
+    add("kspDesktop", libs.room.compiler)
 
     coreLibraryDesugaring(libs.desugaring)
 }

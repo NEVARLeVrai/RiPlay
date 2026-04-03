@@ -37,7 +37,10 @@ import it.fast4x.riplay.ui.styling.secondary
 import it.fast4x.riplay.ui.components.ScreenContainer
 import it.fast4x.riplay.utils.colorPalette
 import it.fast4x.riplay.utils.typography
+import kotlinx.serialization.ExperimentalSerializationApi
+import java.net.URLEncoder
 
+@OptIn(ExperimentalSerializationApi::class)
 @ExperimentalMaterialApi
 @ExperimentalTextApi
 @ExperimentalFoundationApi
@@ -128,7 +131,10 @@ fun SearchTypeScreen(
                             navController = navController,
                             textFieldValue = textFieldValue,
                             onTextFieldValueChanged = onTextFieldValueChanged,
-                            onSearch = { navController.navigate("${NavRoutes.searchResults.name}/$it") },
+                            onSearch = { query ->
+                                val encodedQuery = URLEncoder.encode(query, "UTF-8")
+                                navController.navigate("${NavRoutes.searchResults.name}/$encodedQuery")
+                            },
                             decorationBox = decorationBox
                         )
 

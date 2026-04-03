@@ -44,6 +44,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
@@ -65,6 +66,7 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
@@ -113,6 +115,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.ExperimentalTextApi
@@ -126,7 +129,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.times
 import androidx.compose.ui.util.lerp
 import androidx.compose.ui.zIndex
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
@@ -151,7 +153,7 @@ import com.mikepenz.hypnoticcanvas.shaders.MesmerizingLens
 import com.mikepenz.hypnoticcanvas.shaders.OilFlow
 import com.mikepenz.hypnoticcanvas.shaders.PurpleLiquid
 import com.mikepenz.hypnoticcanvas.shaders.Stage
-import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.PlayerConstants
+import it.fast4x.androidyoutubeplayer.core.player.PlayerConstants
 import dev.chrisbanes.haze.HazeDefaults
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.haze
@@ -215,8 +217,6 @@ import it.fast4x.riplay.extensions.preferences.expandedplayertoggleKey
 import it.fast4x.riplay.extensions.preferences.extraspaceKey
 import it.fast4x.riplay.extensions.preferences.fadingedgeKey
 import it.fast4x.riplay.extensions.preferences.jumpPreviousKey
-import it.fast4x.riplay.extensions.preferences.lastVideoIdKey
-import it.fast4x.riplay.extensions.preferences.lastVideoSecondsKey
 import it.fast4x.riplay.extensions.preferences.miniQueueExpandedKey
 import it.fast4x.riplay.extensions.preferences.noblurKey
 import it.fast4x.riplay.extensions.preferences.playerBackgroundColorsKey
@@ -287,7 +287,7 @@ import it.fast4x.riplay.ui.components.themed.SecondaryTextButton
 import it.fast4x.riplay.ui.components.themed.SmartMessage
 import it.fast4x.riplay.ui.components.themed.ThumbnailOffsetDialog
 import it.fast4x.riplay.ui.components.themed.animateBrushRotation
-import it.fast4x.riplay.ui.screens.player.common.Lyrics
+import it.fast4x.riplay.ui.screens.player.common.LyricsNew
 import it.fast4x.riplay.ui.screens.player.common.NextVisualizer
 import it.fast4x.riplay.ui.screens.player.common.Queue
 import it.fast4x.riplay.ui.screens.player.common.StatsForNerds
@@ -321,10 +321,12 @@ import it.fast4x.riplay.utils.formatAsTime
 import it.fast4x.riplay.utils.getBitmapFromUrl
 import it.fast4x.riplay.utils.getIconQueueLoopState
 import it.fast4x.riplay.utils.getLikeState
+import it.fast4x.riplay.utils.getRoundnessShape
 import it.fast4x.riplay.utils.hide
 import it.fast4x.riplay.utils.horizontalFadingEdge
 import it.fast4x.riplay.utils.isExplicit
 import it.fast4x.riplay.utils.isLandscape
+import it.fast4x.riplay.utils.isLocal
 import it.fast4x.riplay.utils.isVideo
 import it.fast4x.riplay.utils.mediaItemToggleLike
 import it.fast4x.riplay.utils.mediaItems
@@ -346,13 +348,15 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.dailyislam.android.utilities.isNetworkConnected
+import it.fast4x.riplay.utils.isNetworkConnected
+import kotlinx.serialization.ExperimentalSerializationApi
 import timber.log.Timber
 import kotlin.Float.Companion.POSITIVE_INFINITY
 import kotlin.math.absoluteValue
 import kotlin.math.sqrt
 
 
+@ExperimentalSerializationApi
 @ExperimentalPermissionsApi
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 @ExperimentalTextApi
@@ -397,13 +401,14 @@ fun OnlinePlayer(
     binder?.player ?: return
     if (binder.player.currentTimeline.windowCount == 0) return
 
-    val playerState = binder.onlinePlayerState
+    val playerState = binder.playerState.collectAsState()
+    val shouldBePlaying = playerState.value.isPlaying
 
     var nullableMediaItem by remember {
         mutableStateOf(binder.player.currentMediaItem, neverEqualPolicy())
     }
 
-    var shouldBePlaying by rememberSaveable { mutableStateOf(false) }
+
 
     var isRotated by rememberSaveable { mutableStateOf(false) }
     val rotationAngle by animateFloatAsState(
@@ -574,7 +579,7 @@ fun OnlinePlayer(
 
 
     if (sleepTimerMillisLeft != null)
-        if (sleepTimerMillisLeft!! < timeRemaining.toLong() && !delayedSleepTimer) {
+        if ((sleepTimerMillisLeft ?: 0) < timeRemaining.toLong() && !delayedSleepTimer) {
             binder.cancelSleepTimer()
             binder.startSleepTimer(timeRemaining.toLong())
             delayedSleepTimer = true
@@ -1012,7 +1017,7 @@ fun OnlinePlayer(
 
     val transparentBackgroundActionBarPlayer by rememberObservedPreference(
         transparentBackgroundPlayerActionBarKey,
-        false
+        true
     )
     val showTopActionsBar by rememberObservedPreference(showTopActionsBarKey, true)
     val showPlayerActionsBar by rememberObservedPreference(showPlayerActionsBarKey, true)
@@ -1316,17 +1321,9 @@ fun OnlinePlayer(
 
     /***** NEW PLAYER *****/
 
-    var lastYTVideoId by rememberPreference(key = lastVideoIdKey, defaultValue = "")
-    var lastYTVideoSeconds by rememberPreference(key = lastVideoSecondsKey, defaultValue = 0f)
-
-    var updateStatisticsEverySeconds by rememberSaveable { mutableIntStateOf(0) }
-    val steps by rememberSaveable { mutableIntStateOf(5) }
-    var stepToUpdateStats by rememberSaveable { mutableIntStateOf(1) }
-
     val isLandscape = isLandscape
 
     LaunchedEffect(mediaItem) {
-        //positionAndDuration = 0f to 0f
 
         // Ensure that the song is in database
         CoroutineScope(Dispatchers.IO).launch {
@@ -1343,60 +1340,12 @@ fun OnlinePlayer(
         }
         updateBrush = true
 
-        stepToUpdateStats = 1
-
     }
 
-    /*
-    LaunchedEffect(positionAndDuration) {
-
-        //positionAndDuration = currentSecond to currentDuration
-        timeRemaining = positionAndDuration.second.toInt() - positionAndDuration.first.toInt()
-
-        updateStatisticsEverySeconds = (positionAndDuration.second / steps).toInt()
-
-        if (getPauseListenHistory()) return@LaunchedEffect
-
-        if (positionAndDuration.first.toInt() == updateStatisticsEverySeconds * stepToUpdateStats) {
-            stepToUpdateStats++
-            val totalPlayTimeMs = (positionAndDuration.first * 1000).toLong()
-            Database.asyncTransaction {
-                incrementTotalPlayTimeMs(mediaItem.mediaId, totalPlayTimeMs)
-            }
-
-            val minTimeForEvent = getMinTimeForEvent().ms
-
-            if (totalPlayTimeMs > minTimeForEvent) {
-
-                Database.asyncTransaction {
-                    try {
-                        insert(
-                            Event(
-                                songId = mediaItem.mediaId,
-                                timestamp = System.currentTimeMillis(),
-                                playTime = totalPlayTimeMs
-                            )
-                        )
-                    } catch (e: SQLException) {
-                        Timber.e("PlayerServiceModern onPlaybackStatsReady SQLException ${e.stackTraceToString()}")
-                    }
-                }
-            }
-        }
-
-    }
-
-     */
-
-    LaunchedEffect(playerState) {
-
-        shouldBePlaying = playerState == PlayerConstants.PlayerState.PLAYING
-
-    }
 
     val thumbnailRoundness by rememberObservedPreference(
         thumbnailRoundnessKey,
-        ThumbnailRoundness.Heavy
+        ThumbnailRoundness.Light
     )
 
     val controlsContent: @Composable (
@@ -1437,7 +1386,7 @@ fun OnlinePlayer(
                 }
                 else binder.player.playPrevious()
             },
-            playerState = playerState,
+            playerState = PlayerConstants.PlayerState.PAUSED //playerState.value,
         )
     }
 
@@ -1481,7 +1430,9 @@ fun OnlinePlayer(
                                 }
                             )
                     ) {
-                        controlsContent(Modifier.padding(top = 20.dp).align(Alignment.Center))
+                        controlsContent(Modifier
+                            .padding(top = 20.dp)
+                            .align(Alignment.Center))
                         if (showButtonPlayerVideo)
                             Image(
                                 painter = painterResource(R.drawable.left_and_right_arrows),
@@ -1582,9 +1533,13 @@ fun OnlinePlayer(
 
     val equalizer = LocalPlayerServiceBinder.current?.equalizer
 
+    val density = LocalDensity.current
+    val bottomInset = with(density) { WindowInsets.navigationBars.getBottom(density).toDp() }
+    val contentPadding = PaddingValues(bottom = bottomInset)
+
     Box(
         modifier = Modifier
-            .padding(windowInsets.only(WindowInsetsSides.Bottom).asPaddingValues())
+            //.padding(windowInsets.only(WindowInsetsSides.Bottom).asPaddingValues())
             .fillMaxSize()
     ) {
         val actionsBarContent: @Composable () -> Unit = {
@@ -1606,10 +1561,13 @@ fun OnlinePlayer(
             ) {
                 Row {}
             } else
+
                 Row(
                     modifier = Modifier
                         .align(if (isLandscape) Alignment.BottomEnd else Alignment.BottomCenter)
-                        .requiredHeight(if (showNextSongsInPlayer && (showlyricsthumbnail || (!isShowingLyrics || miniQueueExpanded))) 90.dp else 50.dp)
+                        //.requiredHeight(if (showNextSongsInPlayer && (showlyricsthumbnail || (!isShowingLyrics || miniQueueExpanded))) 100.dp else 60.dp)
+                        .height( Dimensions.navigationBarHeight + bottomInset )
+                        .padding(contentPadding)
                         .fillMaxWidth(if (isLandscape) 0.8f else 1f)
                         .conditional(tapqueue) { clickable { showQueue = true } }
                         .background(
@@ -1628,7 +1586,7 @@ fun OnlinePlayer(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(
-                        verticalArrangement = Arrangement.SpaceAround,
+                        verticalArrangement = Arrangement.Center,
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier.fillMaxSize()
                     ) {
@@ -1772,7 +1730,7 @@ fun OnlinePlayer(
                                                         contentScale = ContentScale.Crop,
                                                         modifier = Modifier
                                                             .padding(end = 5.dp)
-                                                            .clip(RoundedCornerShape(5.dp))
+                                                            .clip(getRoundnessShape())
                                                             .size(30.dp)
                                                     )
                                                 }
@@ -1895,6 +1853,8 @@ fun OnlinePlayer(
                             horizontalArrangement = if (actionspacedevenly) Arrangement.SpaceEvenly else Arrangement.SpaceBetween,
                             modifier = Modifier
                                 .padding(horizontal = 12.dp)
+                                .padding(bottom = 5.dp)
+                                .requiredHeight(32.dp)
                                 .fillMaxWidth()
                         ) {
                             if (showButtonPlayerVideo)
@@ -2053,7 +2013,7 @@ fun OnlinePlayer(
                                     )
                                 } else {
                                     BasicText(
-                                        text = formatAsDuration(sleepTimerMillisLeft!!),
+                                        text = formatAsDuration(sleepTimerMillisLeft ?: 0),
                                         style = typography().l.semiBold,
                                         modifier = Modifier
                                             .clickable(onClick = {
@@ -2470,7 +2430,7 @@ fun OnlinePlayer(
                                     .navigationBarsPadding()
                             ) {
                                 if (!showlyricsthumbnail) {
-                                    Lyrics(
+                                    LyricsNew(
                                         mediaId = mediaItem.mediaId,
                                         isDisplayed = isShowingLyrics,
                                         onDismiss = {
@@ -2480,7 +2440,7 @@ fun OnlinePlayer(
                                         size = 1000.dp,
                                         mediaMetadataProvider = mediaItem::mediaMetadata,
                                         durationProvider = { positionAndDuration.second.toLong() * 1000 },
-                                        positionProvider = { positionAndDuration.first.toLong() * 1000 },
+                                        //positionProvider = { positionAndDuration.first.toLong() * 1000 },
                                         isLandscape = isLandscape,
                                         clickLyricsText = clickLyricsText,
                                         modifier = Modifier
@@ -2596,7 +2556,7 @@ fun OnlinePlayer(
                                                 )
 
                                                 val coverModifier = Modifier
-                                                    .applyIf(!isLandscape){
+                                                    .applyIf(!isLandscape) {
                                                         fillMaxSize()
                                                     }
                                                     .aspectRatio(1f)
@@ -2680,7 +2640,7 @@ fun OnlinePlayer(
                                                                     else 0.57f
                                                                 ),
                                                             state = pagerState,
-                                                            it = it,
+                                                            pageIndex = it,
                                                             imageCoverSize = imageCoverSize,
                                                             type = coverThumbnailAnimation
                                                         )
@@ -2816,7 +2776,7 @@ fun OnlinePlayer(
                                         }
                                         else binder.player.playPrevious()
                                     },
-                                    playerState = playerState,
+                                    playerState = PlayerConstants.PlayerState.PAUSED
                                 )
 
                             }
@@ -3029,7 +2989,7 @@ fun OnlinePlayer(
                                             alpha = (2f - startOffset) / 2f
                                         }
                                     }
-                                    .clip(RoundedCornerShape(20.dp))
+                                    .clip(getRoundnessShape())
                                     .combinedClickable(
                                         interactionSource = remember { MutableInteractionSource() },
                                         indication = null,
@@ -3112,7 +3072,7 @@ fun OnlinePlayer(
                                                 }
                                                 else binder.player.playPrevious()
                                             },
-                                            playerState = playerState,
+                                            playerState = PlayerConstants.PlayerState.PAUSED
                                         )
                                     }
                                 }
@@ -3188,7 +3148,30 @@ fun OnlinePlayer(
                                     .size(24.dp)
                             )
 
+                            Column(
+                                verticalArrangement = Arrangement.Center,
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                            ) {
+                                Text(
+                                    stringResource(R.string.now_playing_title),
+                                    style = typography().xs,
+                                    color = colorPalette().text,
+                                    modifier = Modifier
+                                        .clickable {
+                                            onDismiss()
+                                            navController.navigate(NavRoutes.home.name)
+                                        }
+                                )
+                                Text(
+                                    if (mediaItem.isLocal)
+                                        stringResource(R.string.local_now_playing_title)
+                                    else stringResource(R.string.online_now_playing_title),
+                                    color = colorPalette().text,
+                                    style = typography().xxs,
+                                )
+                            }
 
+                            /*
                             Image(
                                 painter = painterResource(R.drawable.app_icon),
                                 contentDescription = null,
@@ -3203,6 +3186,7 @@ fun OnlinePlayer(
                                     .size(24.dp)
 
                             )
+                             */
 
                             if (!showButtonPlayerMenu)
                                 Image(
@@ -3234,15 +3218,16 @@ fun OnlinePlayer(
                                 )
 
                         }
-                        Spacer(
-                            modifier = Modifier
-                                .height(5.dp)
-                                .padding(
-                                    windowInsets
-                                        .only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
-                                        .asPaddingValues()
-                                )
-                        )
+
+//                        Spacer(
+//                            modifier = Modifier
+//                                .height(5.dp)
+//                                .padding(
+//                                    windowInsets
+//                                        .only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
+//                                        .asPaddingValues()
+//                                )
+//                        )
                     }
 
                     if (topPadding && !showTopActionsBar) {
@@ -3253,7 +3238,7 @@ fun OnlinePlayer(
                                         .only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
                                         .asPaddingValues()
                                 )
-                                .height(35.dp)
+                                .height(30.dp)
                         )
                     }
 
@@ -3358,7 +3343,7 @@ fun OnlinePlayer(
                                         )
 
                                         val coverModifier = Modifier
-                                            .applyIf(!isLandscape){
+                                            .applyIf(!isLandscape) {
                                                 fillMaxSize()
                                             }
                                             .aspectRatio(1f)
@@ -3436,7 +3421,7 @@ fun OnlinePlayer(
                                                             else 0.57f
                                                         ),
                                                     state = pagerState,
-                                                    it = index,
+                                                    pageIndex = index,
                                                     imageCoverSize = imageCoverSize,
                                                     type = coverThumbnailAnimation
                                                 )
@@ -3496,7 +3481,7 @@ fun OnlinePlayer(
                                    )
 
                                      val coverModifier = Modifier
-                                         .applyIf(!it.fast4x.riplay.utils.isLandscape){
+                                         .applyIf(!it.fast4x.riplay.utils.isLandscape) {
                                              fillMaxSize()
                                          }
                                          .conditional(thumbnailType == ThumbnailType.Modern) {
@@ -3555,7 +3540,7 @@ fun OnlinePlayer(
                                 }
                         ) {
                             if (!showlyricsthumbnail)
-                                Lyrics(
+                                LyricsNew(
                                     mediaId = mediaItem.mediaId,
                                     isDisplayed = isShowingLyrics,
                                     onDismiss = {
@@ -3565,7 +3550,7 @@ fun OnlinePlayer(
                                     size = 1000.dp,
                                     mediaMetadataProvider = mediaItem::mediaMetadata,
                                     durationProvider = { positionAndDuration.second.toLong() * 1000 },
-                                    positionProvider = { positionAndDuration.first.toLong() * 1000 },
+                                    //positionProvider = { positionAndDuration.first.toLong() * 1000 },
                                     isLandscape = isLandscape,
                                     clickLyricsText = clickLyricsText,
                                 )
@@ -3580,7 +3565,7 @@ fun OnlinePlayer(
                         )
 
                         val coverModifier = Modifier
-                            .applyIf(!it.fast4x.riplay.utils.isLandscape){
+                            .applyIf(!it.fast4x.riplay.utils.isLandscape) {
                                 fillMaxSize()
                             }
                             .conditional(!it.fast4x.riplay.utils.isLandscape && !mediaItem.isVideo) {
@@ -3831,7 +3816,7 @@ fun OnlinePlayer(
                                         }
                                         else binder.player.playPrevious()
                                     },
-                                    playerState = playerState,
+                                    playerState = PlayerConstants.PlayerState.PAUSED
                                 )
 
                             }
@@ -3876,10 +3861,6 @@ fun OnlinePlayer(
                 navController = navController,
                 showPlayer = {},
                 hidePlayer = {},
-                //player = binder.onlinePlayer,
-                //playerState = playerState,
-                //currentDuration = currentDuration,
-                //currentSecond = currentSecond,
                 onDismiss = {
                     queueLoopType = it
                     showQueue = false

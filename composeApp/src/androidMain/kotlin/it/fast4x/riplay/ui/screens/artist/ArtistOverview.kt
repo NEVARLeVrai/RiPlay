@@ -110,7 +110,7 @@ import it.fast4x.riplay.utils.applyIf
 import it.fast4x.riplay.utils.enqueue
 import it.fast4x.riplay.utils.fadingEdge
 import it.fast4x.riplay.utils.isLandscape
-import org.dailyislam.android.utilities.isNetworkConnected
+import it.fast4x.riplay.utils.isNetworkConnected
 import it.fast4x.riplay.extensions.preferences.parentalControlEnabledKey
 import it.fast4x.riplay.extensions.preferences.rememberPreference
 import it.fast4x.riplay.utils.resize
@@ -128,8 +128,10 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlin.random.Random
 
+@ExperimentalSerializationApi
 @OptIn(ExperimentalMaterial3Api::class)
 @ExperimentalTextApi
 @SuppressLint("SuspiciousIndentation")
@@ -160,7 +162,7 @@ fun ArtistOverview(
 
     val endPaddingValues = windowInsets.only(WindowInsetsSides.End).asPaddingValues()
 
-    val thumbnailRoundness by rememberPreference(thumbnailRoundnessKey, ThumbnailRoundness.Heavy)
+    val thumbnailRoundness by rememberPreference(thumbnailRoundnessKey, ThumbnailRoundness.Light)
 
 
     val context = LocalContext.current
@@ -412,8 +414,8 @@ fun ArtistOverview(
                                             artistPage?.artist?.channelId.let {
                                                 if (it != null) {
                                                     EnvironmentExt.unsubscribeChannel(it)
-                                                    if (artist != null) {
-                                                        Database.update(artist!!.copy(isYoutubeArtist = false))
+                                                    artist?.let {
+                                                        Database.update(it.copy(isYoutubeArtist = false))
                                                     }
                                                 }
                                             }
@@ -421,8 +423,8 @@ fun ArtistOverview(
                                             artistPage?.artist?.channelId.let {
                                                 if (it != null) {
                                                     EnvironmentExt.subscribeChannel(it)
-                                                    if (artist != null) {
-                                                        Database.update(artist!!.copy(isYoutubeArtist = true))
+                                                    artist?.let {
+                                                        Database.update(it.copy(isYoutubeArtist = true))
                                                     }
                                                 }
                                             }
@@ -581,8 +583,8 @@ fun ArtistOverview(
                             onClick = {
                                 //println("ArtistOverviewModern onClick: browseId: ${it.moreEndpoint?.browseId} params: ${it.moreEndpoint?.params}")
                                 if (it.moreEndpoint?.browseId != null) {
-                                    itemsBrowseId = it.moreEndpoint!!.browseId!!
-                                    itemsParams = it.moreEndpoint!!.params.toString()
+                                    itemsBrowseId = it.moreEndpoint?.browseId.toString()
+                                    itemsParams = it.moreEndpoint?.params.toString()
                                     itemsSectionName = it.title
                                     showArtistItems = true
                                 }
@@ -596,8 +598,8 @@ fun ArtistOverview(
                             onClick1 = {
                                 //println("ArtistOverviewModern onClick: browseId: ${it.moreEndpoint?.browseId} params: ${it.moreEndpoint?.params}")
                                 if (it.moreEndpoint?.browseId != null) {
-                                    itemsBrowseId = it.moreEndpoint!!.browseId!!
-                                    itemsParams = it.moreEndpoint!!.params.toString()
+                                    itemsBrowseId = it.moreEndpoint?.browseId.toString()
+                                    itemsParams = it.moreEndpoint?.params.toString()
                                     itemsSectionName = it.title
                                     showArtistItems = true
                                 }

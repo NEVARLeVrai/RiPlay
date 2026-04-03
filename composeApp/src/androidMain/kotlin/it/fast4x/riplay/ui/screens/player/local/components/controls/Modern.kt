@@ -68,7 +68,7 @@ import it.fast4x.riplay.ui.components.themed.CustomElevatedButton
 import it.fast4x.riplay.ui.components.themed.IconButton
 import it.fast4x.riplay.ui.components.themed.SelectorArtistsDialog
 import it.fast4x.riplay.ui.components.themed.SmartMessage
-import it.fast4x.riplay.ui.screens.player.local.bounceClick
+import it.fast4x.riplay.utils.bounceClick
 import it.fast4x.riplay.ui.screens.settings.isYtSyncEnabled
 import it.fast4x.riplay.ui.styling.favoritesIcon
 import it.fast4x.riplay.utils.addToOnlineLikedSong
@@ -79,7 +79,7 @@ import it.fast4x.riplay.utils.dropShadow
 import it.fast4x.riplay.extensions.preferences.effectRotationKey
 import it.fast4x.riplay.utils.getLikeState
 import it.fast4x.riplay.utils.getUnlikedIcon
-import org.dailyislam.android.utilities.isNetworkConnected
+import it.fast4x.riplay.utils.isNetworkConnected
 import it.fast4x.riplay.extensions.preferences.jumpPreviousKey
 import it.fast4x.riplay.utils.mediaItemToggleLike
 import it.fast4x.riplay.utils.playNext
@@ -93,14 +93,17 @@ import it.fast4x.riplay.commonutils.setDisLikeState
 import it.fast4x.riplay.extensions.preferences.showthumbnailKey
 import it.fast4x.riplay.utils.copyTextToClipboard
 import it.fast4x.riplay.extensions.preferences.textoutlineKey
+import it.fast4x.riplay.utils.getRoundnessShape
 import it.fast4x.riplay.utils.removeFromOnlineLikedSong
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.serialization.ExperimentalSerializationApi
 
 
 @UnstableApi
 @ExperimentalFoundationApi
+@ExperimentalSerializationApi
 @Composable
 fun InfoAlbumAndArtistModern(
     binder: PlayerService.Binder,
@@ -445,8 +448,8 @@ fun ControlsModern(
           onClick = {},
           modifier = Modifier
               .size(55.dp)
-              .doubleShadowDrop(RoundedCornerShape(8.dp), 4.dp, 8.dp)
-              .clip(RoundedCornerShape(8.dp))
+              .doubleShadowDrop(getRoundnessShape(), 4.dp, 8.dp)
+              .clip(getRoundnessShape())
               .combinedClickable(
                   indication = ripple(bounded = true),
                   interactionSource = remember { MutableInteractionSource() },
@@ -624,8 +627,8 @@ fun ControlsModern(
         onClick = {},
         modifier = Modifier
             .size(55.dp)
-            .doubleShadowDrop(RoundedCornerShape(8.dp), 4.dp, 8.dp)
-            .clip(RoundedCornerShape(8.dp))
+            .doubleShadowDrop(getRoundnessShape(), 4.dp, 8.dp)
+            .clip(getRoundnessShape())
             .combinedClickable(
                 indication = ripple(bounded = true),
                 interactionSource = remember { MutableInteractionSource() },
@@ -636,7 +639,7 @@ fun ControlsModern(
                 },
                 onLongClick = {}
             )
-            .clip(RoundedCornerShape(8.dp))
+            .clip(getRoundnessShape())
 
       ) {
           Image(

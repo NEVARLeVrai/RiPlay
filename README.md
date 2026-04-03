@@ -45,7 +45,6 @@ RiPlay is a powerful, open-source music player designed for music lovers who wan
 - Sleep timer
 - Visualizer (microphone permission required)
 - Fast Share (direct sharing with installed apps)
-- Cast to another Android device / TV via [RiLink](https://github.com/fast4x/RiLink) (experimental)
 - Self-closing app scheduling
 - Events daily/weekly, new releases from your artists, auto backup and check update
 - Android Auto support
@@ -55,7 +54,7 @@ RiPlay is a powerful, open-source music player designed for music lovers who wan
 ### 🎨 Customization
 - Themes
 - Audio controls: volume, speed, pitch, normalization, skip silence, bassboost
-- More options via [RiEqualizer](https://github.com/fast4x/RiEqualizer)
+
 
 ### 🌐 Multilingual Support
 - Available in 50+ languages
@@ -131,11 +130,17 @@ RiPlay is a powerful, open-source music player designed for music lovers who wan
   <a href="https://github.com/fast4x/RiPlay/releases/latest">
     <img src="./assets/images/getItGithub.png" alt="Download from GitHub" height="80">
   </a>
+  <a href="https://f-droid.org/packages/it.fast4x.riplay">
+    <img src="./assets/images/getItf-droid.png" alt="Download from F-Droid" height="80">
+  </a>
   <a href="https://apt.izzysoft.de/fdroid/index/apk/it.fast4x.riplay">
     <img src="./assets/images/getItIzzyOnDroid.png" alt="Download from IzzyOnDroid" height="80">
   </a>
   <a href="https://accrescent.app/app/it.fast4x.riplay">
     <img src="./assets/images/getItAccrescent.png" alt="Download from Accrescent" height="80">
+  </a>
+ <a href="https://www.openapk.net/riplay/it.fast4x.riplay/">
+    <img src="./assets/images/getItOpenapk.png" alt="Download from OpenAPK" height="80">
   </a>
 </div>
 
@@ -163,11 +168,11 @@ RiPlay wouldn't be possible without the amazing work of these projects and contr
 
 - [RiMusic](https://github.com/fast4x/RiMusic) – Me & contributors  
 - [ViMusic](https://github.com/vfsfitvnm/ViMusic) – foundation  
-- [Android YouTube Player](https://github.com/PierfrancescoSoffritti/android-youtube-player) – YouTube Player wrapper  
+- [Android YouTube Player](https://github.com/PierfrancescoSoffritti/android-youtube-player) – YouTube Iframe Player API wrapper  
 - [Ionicons](https://github.com/ionic-team/ionicons) – icons  
 - [FlatIcon.com](https://www.flaticon.com/) – icons & stickers  
-- [Translator](https://github.com/therealbush/translator) – Google Translate library  
-- [KuGou](https://www.kugou.com) & [LrcLib](https://lrclib.net) – lyrics  
+- [Translator](https://github.com/rebelonion/translator) – Translate library for Kotlin/JVM and Java 
+- [KuGou](https://www.kugou.com), [LrcLib](https://lrclib.net), [SyncLRC](https://synclrc.tharuk.pro) – Lyrics providers
 - [HypnoticCanvas](https://mikepenz.github.io/HypnoticCanvas/) – shaders for Compose  
 - [AudioTag.info](https://audiotag.info) – music recognition API
 

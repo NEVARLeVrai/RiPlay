@@ -152,8 +152,10 @@ import it.fast4x.riplay.extensions.persist.persistList
 import it.fast4x.riplay.extensions.preferences.onDeviceSongSortByKey
 import it.fast4x.riplay.ui.items.PlaylistItem
 import it.fast4x.riplay.utils.cleanOnDeviceName
+import kotlinx.serialization.ExperimentalSerializationApi
 import timber.log.Timber
 
+@ExperimentalSerializationApi
 @KotlinCsvExperimental
 @ExperimentalMaterialApi
 @ExperimentalTextApi
@@ -241,7 +243,7 @@ fun OnDevicePlaylist(
 
     val thumbnailRoundness by rememberPreference(
         thumbnailRoundnessKey,
-        ThumbnailRoundness.Heavy
+        ThumbnailRoundness.Light
     )
 
     val sortOrderIconRotation by animateFloatAsState(

@@ -63,6 +63,8 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.offline.Download
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import dev.rebelonion.translator.Language
+import dev.rebelonion.translator.Translator
 import it.fast4x.riplay.extensions.persist.persist
 import it.fast4x.riplay.extensions.persist.persistList
 import it.fast4x.environment.Environment
@@ -118,7 +120,6 @@ import it.fast4x.riplay.utils.fadingEdge
 import it.fast4x.riplay.utils.forcePlayAtIndex
 import it.fast4x.riplay.utils.forcePlayFromBeginning
 import it.fast4x.riplay.utils.formatAsTime
-import org.dailyislam.android.utilities.getHttpClient
 import it.fast4x.riplay.utils.isLandscape
 import it.fast4x.riplay.utils.languageDestination
 import it.fast4x.riplay.ui.styling.medium
@@ -132,8 +133,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import me.bush.translator.Language
-import me.bush.translator.Translator
 import it.fast4x.riplay.utils.colorPalette
 import it.fast4x.riplay.enums.PopupType
 import it.fast4x.riplay.extensions.fastshare.FastShare
@@ -146,15 +145,18 @@ import it.fast4x.riplay.ui.components.themed.LoaderScreen
 import it.fast4x.riplay.ui.components.themed.QueuesDialog
 import it.fast4x.riplay.ui.components.themed.Title
 import it.fast4x.riplay.ui.screens.settings.isYtSyncEnabled
+import it.fast4x.riplay.utils.CustomHttpClient
 import it.fast4x.riplay.utils.LazyListContainer
 import it.fast4x.riplay.utils.addToYtLikedSongs
 import it.fast4x.riplay.utils.addToYtPlaylist
 import it.fast4x.riplay.utils.globalContext
-import org.dailyislam.android.utilities.isNetworkConnected
+import it.fast4x.riplay.utils.isNetworkConnected
 import it.fast4x.riplay.utils.mediaItemSetLiked
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.ExperimentalSerializationApi
 
+@ExperimentalSerializationApi
 @OptIn(ExperimentalMaterial3Api::class)
 @ExperimentalTextApi
 @SuppressLint("SuspiciousIndentation")
@@ -499,7 +501,7 @@ fun AlbumDetails(
         mutableStateOf(false)
     }
 
-    val translator = Translator(getHttpClient())
+    val translator =  Translator(CustomHttpClient.okHttpClient)
     val languageDestination = languageDestination()
 
     var readMore by remember { mutableStateOf(false) }
@@ -757,11 +759,7 @@ fun AlbumDetails(
                                                                             it
                                                                         )
                                                                         Database.asyncTransaction {
-                                                                            update(
-                                                                                album!!.copy(
-                                                                                    isYoutubeAlbum = false
-                                                                                )
-                                                                            )
+                                                                            album?.let { update(it.copy(isYoutubeAlbum = false)) }
                                                                         }
                                                                     }
                                                                 }
@@ -773,11 +771,7 @@ fun AlbumDetails(
                                                                         )
                                                                         if (album != null) {
                                                                             Database.asyncTransaction {
-                                                                                update(
-                                                                                    album!!.copy(
-                                                                                        isYoutubeAlbum = true
-                                                                                    )
-                                                                                )
+                                                                                album?.let { update(it.copy(isYoutubeAlbum = false)) }
                                                                             }
                                                                         }
                                                                     }
@@ -1218,10 +1212,8 @@ fun AlbumDetails(
 
                                     if (!readMore)
                                         BasicText(
-                                            text = translatedText.substring(
-                                                0,
-                                                if (translatedText.length >= 100) 100 else translatedText.length
-                                            ).plus("..."),
+                                            text = translatedText.take(if (translatedText.length >= 100) 100 else translatedText.length)
+                                                .plus("..."),
                                             style = typography().xxs.secondary.align(TextAlign.Justify),
                                             modifier = Modifier
                                                 .padding(horizontal = 8.dp)

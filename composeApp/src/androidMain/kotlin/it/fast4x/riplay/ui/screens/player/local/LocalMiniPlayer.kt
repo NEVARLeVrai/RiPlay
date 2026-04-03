@@ -95,7 +95,7 @@ import it.fast4x.riplay.extensions.preferences.effectRotationKey
 import it.fast4x.riplay.utils.getLikeState
 import it.fast4x.riplay.utils.intent
 import it.fast4x.riplay.utils.isExplicit
-import org.dailyislam.android.utilities.isNetworkConnected
+import it.fast4x.riplay.utils.isNetworkConnected
 import it.fast4x.riplay.utils.mediaItemToggleLike
 import it.fast4x.riplay.extensions.preferences.miniPlayerTypeKey
 import it.fast4x.riplay.utils.playNext
@@ -116,11 +116,12 @@ import it.fast4x.riplay.utils.PlayerViewModel
 import it.fast4x.riplay.utils.PlayerViewModelFactory
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import it.fast4x.riplay.utils.getRoundnessShape
+import kotlinx.serialization.ExperimentalSerializationApi
 
 @androidx.annotation.OptIn(UnstableApi::class)
-@OptIn(ExperimentalFoundationApi::class,
-    ExperimentalFoundationApi::class, ExperimentalFoundationApi::class,
-    ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class)
+@ExperimentalSerializationApi
 @Composable
 fun LocalMiniPlayer(
     showPlayer: () -> Unit,
@@ -209,7 +210,7 @@ fun LocalMiniPlayer(
                     if (like(mediaItem.mediaId, setDisLikeState(likedAt)) == 0)
                         insert(mediaItem, Song::toggleDislike)
                     }
-                if (likedAt == null || likedAt!! > 0L)
+                if (likedAt == null || (likedAt ?: 0) > 0L)
                     SmartMessage(context.resources.getString(R.string.added_to_disliked), context = context)
                 else
                     SmartMessage(context.resources.getString(R.string.removed_from_disliked), context = context)
@@ -258,7 +259,7 @@ fun LocalMiniPlayer(
     SwipeToDismissBox(
         modifier = Modifier
             .padding(horizontal = 16.dp)
-            .clip(RoundedCornerShape(12.dp)),
+            .clip(getRoundnessShape()),
         state = dismissState,
         backgroundContent = {
             /*

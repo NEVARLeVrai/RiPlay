@@ -80,6 +80,7 @@ class EqualizerHelper(private val context: Context) {
         try {
 
             val isEnabled = prefs.getBoolean(eqEnabledKey, false) // Default false
+
             val bandsString = prefs.getString(eqBandsKey, null)
 
             val range = eq.bandLevelRange

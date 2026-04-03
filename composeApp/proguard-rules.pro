@@ -1,7 +1,12 @@
 #-dontshrink
-#-dontobfuscate
+-dontobfuscate
 #-dontoptimize
 #-repackageclasses 'defpackage'
+
+-keep public class * extends android.app.Service
+-keep public class * extends android.app.Activity
+-keep public class * extends android.content.BroadcastReceiver
+-keep public class * extends android.content.ContentProvider
 
 -keep,allowobfuscation,allowshrinking class kotlin.coroutines.Continuation
 
@@ -132,3 +137,10 @@
 -dontwarn jdk.dynalink.linker.support.CompositeTypeBasedGuardingDynamicLinker
 -dontwarn jdk.dynalink.linker.support.Guards
 -dontwarn jdk.dynalink.support.ChainedCallSite
+
+#Required for Mozilla GeckoView
+-dontwarn java.beans.BeanInfo
+-dontwarn java.beans.FeatureDescriptor
+-dontwarn java.beans.IntrospectionException
+-dontwarn java.beans.Introspector
+-dontwarn java.beans.PropertyDescriptor

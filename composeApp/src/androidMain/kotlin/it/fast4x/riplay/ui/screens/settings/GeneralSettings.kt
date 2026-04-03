@@ -156,22 +156,26 @@ import it.fast4x.riplay.extensions.preferences.excludeSongIfIsVideoKey
 import it.fast4x.riplay.extensions.preferences.filterContentTypeKey
 import it.fast4x.riplay.extensions.preferences.parentalControlEnabledKey
 import it.fast4x.riplay.extensions.preferences.pauseSearchHistoryKey
+import it.fast4x.riplay.extensions.preferences.resumeOrPausePlaybackWhenCallKey
 import it.fast4x.riplay.extensions.preferences.resumeOrPausePlaybackWhenDeviceKey
-import it.fast4x.riplay.extensions.preferences.showFavoritesPlaylistsAAKey
+import it.fast4x.riplay.extensions.preferences.showAllSongsAAKey
+import it.fast4x.riplay.extensions.preferences.showFavoritesSongsAAKey
 import it.fast4x.riplay.extensions.preferences.showGridAAKey
 import it.fast4x.riplay.extensions.preferences.showInLibraryAAKey
 import it.fast4x.riplay.extensions.preferences.showMonthlyPlaylistsAAKey
 import it.fast4x.riplay.extensions.preferences.showOnDeviceAAKey
+import it.fast4x.riplay.extensions.preferences.showPinnedAAKey
+import it.fast4x.riplay.extensions.preferences.showPodcastAAKey
 import it.fast4x.riplay.extensions.preferences.showShuffleSongsAAKey
-import it.fast4x.riplay.extensions.preferences.showTopPlaylistAAKey
+import it.fast4x.riplay.extensions.preferences.showTopSongsAAKey
 import it.fast4x.riplay.service.PlayerMediaBrowserService
 import it.fast4x.riplay.ui.components.themed.ConfirmationDialog
 import it.fast4x.riplay.ui.components.themed.SecondaryTextButton
 import it.fast4x.riplay.ui.components.themed.settingsItem
 import it.fast4x.riplay.ui.components.themed.settingsSearchBarItem
-import it.fast4x.riplay.utils.CheckAvailableNewVersion
+import it.fast4x.riplay.utils.CheckForNewVersion
 import it.fast4x.riplay.utils.LazyListContainer
-import it.fast4x.riplay.utils.checkAndDownloadNewVersionCode
+import it.fast4x.riplay.utils.downloadNewVersionInfo
 import it.fast4x.riplay.utils.loadMasterQueue
 import kotlinx.coroutines.flow.distinctUntilChanged
 
@@ -186,6 +190,9 @@ fun GeneralSettings(
 
     val systemLocale = LocaleListCompat.getDefault().get(0).toString()
     var languageApp  by rememberPreference(languageAppKey, getSystemlanguage())
+
+    var restartService by rememberSaveable { mutableStateOf(false) }
+    var restartActivity by rememberSaveable { mutableStateOf(false) }
 
     var minTimeForEvent by rememberPreference(
         exoPlayerMinTimeForEventKey,
@@ -209,6 +216,21 @@ fun GeneralSettings(
         resumeOrPausePlaybackWhenDeviceKey,
         false
     )
+
+    var resumeOrPausePlaybackWhenCall by rememberPreference(
+        resumeOrPausePlaybackWhenCallKey,
+        false
+    )
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            resumeOrPausePlaybackWhenCall = true
+            restartService = true
+        } else {
+            resumeOrPausePlaybackWhenCall = false
+        }
+    }
 
     var skipSilence by rememberPreference(skipSilenceKey, false)
     var skipMediaOnError by rememberPreference(skipMediaOnErrorKey, false)
@@ -275,8 +297,7 @@ fun GeneralSettings(
     var minimumSilenceDuration by rememberPreference(minimumSilenceDurationKey, 2_000_000L)
 
     var pauseListenHistory by rememberPreference(pauseListenHistoryKey, false)
-    var restartService by rememberSaveable { mutableStateOf(false) }
-    var restartActivity by rememberSaveable { mutableStateOf(false) }
+
 
     var loudnessBaseGain by rememberPreference(loudnessBaseGainKey, 5.00f)
     var autoLoadSongsInQueue by rememberPreference(autoLoadSongsInQueueKey, true)
@@ -323,8 +344,11 @@ fun GeneralSettings(
     var showMonthlyPlaylistsAA by rememberPreference(showMonthlyPlaylistsAAKey, true)
     var showInLibraryAA by rememberPreference(showInLibraryAAKey, true)
     var showOnDeviceAA by rememberPreference(showOnDeviceAAKey, true)
-    var showFavoritesPlaylistsAA by rememberPreference(showFavoritesPlaylistsAAKey, true)
-    var showTopPlaylistAA by rememberPreference(showTopPlaylistAAKey, true)
+    var showFavoritesSongsAA by rememberPreference(showFavoritesSongsAAKey, true)
+    var showTopSongsAA by rememberPreference(showTopSongsAAKey, true)
+    var showAllSongsAA by rememberPreference(showAllSongsAAKey, true)
+    var showPodcastAA by rememberPreference(showPodcastAAKey, true)
+    var showPinnedAA by rememberPreference(showPinnedAAKey, true)
     var showGridAA by rememberPreference(showGridAAKey, true)
 
     var isEnabledVoiceInput by rememberPreference(
@@ -460,9 +484,9 @@ fun GeneralSettings(
                         var checkUpdateNow by remember { mutableStateOf(false) }
                         if (checkUpdateNow) {
                             LaunchedEffect(Unit) {
-                                checkAndDownloadNewVersionCode()
+                                downloadNewVersionInfo()
                             }
-                            CheckAvailableNewVersion(
+                            CheckForNewVersion(
                                 onDismiss = { checkUpdateNow = false },
                                 updateAvailable = {
                                     if (!it)
@@ -653,11 +677,11 @@ fun GeneralSettings(
                     val context = LocalContext.current
                     var isKeepScreenOnEnabled by rememberPreference(isKeepScreenOnEnabledKey, false)
                     var isIgnoringBatteryOptimizations by remember {
-                        mutableStateOf(context.isIgnoringBatteryOptimizations)
+                        mutableStateOf(context.isIgnoringBatteryOptimizations())
                     }
                     val activityResultLauncher =
                         rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-                            isIgnoringBatteryOptimizations = context.isIgnoringBatteryOptimizations
+                            isIgnoringBatteryOptimizations = context.isIgnoringBatteryOptimizations()
                         }
 
                     if (search.input.isBlank() || stringResource(R.string.keep_screen_on).contains(
@@ -1209,27 +1233,6 @@ fun GeneralSettings(
                             }
                         )
 
-                    if (search.input.isBlank() || stringResource(R.string.resume_or_pause_playback).contains(
-                            search.input,
-                            true
-                        )
-                    ) {
-                        if (isAtLeastAndroid6) {
-                            SwitchSettingEntry(
-                                title = stringResource(R.string.resume_or_pause_playback),
-                                text = stringResource(R.string.play_or_pause_when_device_is_connected_or_disconnected),
-                                isChecked = resumeOrPausePlaybackWhenDevice,
-                                onCheckedChange = {
-                                    resumeOrPausePlaybackWhenDevice = it
-                                    restartService = true
-                                }
-                            )
-                            RestartPlayerService(
-                                restartService,
-                                onRestart = { restartService = false })
-                        }
-                    }
-
                     if (search.input.isBlank() || stringResource(R.string.persistent_queue).contains(
                             search.input,
                             true
@@ -1679,7 +1682,7 @@ fun GeneralSettings(
 
                 }
 
-                /* // cast to complete in the future
+                 // cast to complete in the future
                 settingsItem(
                     isHeader = true
                 ) {
@@ -1699,12 +1702,10 @@ fun GeneralSettings(
                             isChecked = castToRiTuneDeviceEnabled,
                             onCheckedChange = {
                                 castToRiTuneDeviceEnabled = it
-                                restartService = true
                             }
                         )
-                    RestartPlayerService(restartService, onRestart = { restartService = false })
                 }
-                */
+
 
                 settingsItem(
                     isHeader = true
@@ -1713,6 +1714,63 @@ fun GeneralSettings(
                     SettingsEntryGroupText(title = stringResource(R.string.playback_events))
                 }
                 settingsItem {
+                    if (search.input.isBlank() || stringResource(R.string.resume_or_pause_playback).contains(
+                            search.input,
+                            true
+                        )
+                    ) {
+                        if (isAtLeastAndroid6) {
+                            SwitchSettingEntry(
+                                title = stringResource(R.string.play_or_pause_when_device_is_connected_or_disconnected),
+                                text = "", //stringResource(R.string.resume_or_pause_playback),
+                                isChecked = resumeOrPausePlaybackWhenDevice,
+                                onCheckedChange = {
+                                    resumeOrPausePlaybackWhenDevice = it
+                                    restartService = true
+                                }
+                            )
+                            RestartPlayerService(
+                                restartService,
+                                onRestart = { restartService = false })
+                        }
+
+                        /*
+                        SwitchSettingEntry(
+                            title = stringResource(R.string.play_or_pause_when_receiving_a_call),
+                            text = "", //stringResource(R.string.resume_or_pause_playback),
+                            isChecked = resumeOrPausePlaybackWhenCall,
+                            onCheckedChange = {
+                                if (it) {
+                                    if (ContextCompat.checkSelfPermission(context,
+                                            Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED) {
+                                        resumeOrPausePlaybackWhenCall = true
+                                        val intent = Intent(context, PlayerService::class.java).apply {
+                                            action = PlayerService.ACTION_UPDATE_PHONE_LISTENER
+                                            putExtra(PlayerService.EXTRA_ENABLE_LISTENER, true)
+                                        }
+                                        sendCommandToPlayerService(intent)
+                                    } else
+                                        permissionLauncher.launch(Manifest.permission.READ_PHONE_STATE)
+                                } else {
+                                    val intent = Intent(context, PlayerService::class.java).apply {
+                                        action = PlayerService.ACTION_UPDATE_PHONE_LISTENER
+                                        putExtra(PlayerService.EXTRA_ENABLE_LISTENER, false)
+                                    }
+                                    sendCommandToPlayerService(intent)
+                                    resumeOrPausePlaybackWhenCall = false
+                                }
+
+                            }
+                        )
+
+
+                        RestartPlayerService(
+                            restartService,
+                            onRestart = { restartService = false })
+
+                         */
+                    }
+
                     if (search.input.isBlank() || stringResource(R.string.player_pause_listen_history).contains(
                             search.input,
                             true
@@ -1817,6 +1875,90 @@ fun GeneralSettings(
                                 )
                             }
 
+                            if (search.input.isBlank() || stringResource(R.string.aa_show_monthly_playlists).contains(
+                                    search.input,
+                                    true
+                                )
+                            )
+                                SwitchSettingEntry(
+                                    title = stringResource(R.string.aa_show_monthly_playlists),
+                                    text = "", //stringResource(R.string.aa_info_show_monthly_playlists_in_playlists_screen),
+                                    isChecked = showMonthlyPlaylistsAA,
+                                    onCheckedChange = { showMonthlyPlaylistsAA = it }
+                                )
+
+                            if (search.input.isBlank() || stringResource(R.string.aa_show_podcast_playlists).contains(
+                                    search.input,
+                                    true
+                                )
+                            )
+                                SwitchSettingEntry(
+                                    title = stringResource(R.string.aa_show_podcast_playlists),
+                                    text = "", //stringResource(R.string.aa_info_show_monthly_playlists_in_playlists_screen),
+                                    isChecked = showPodcastAA,
+                                    onCheckedChange = { showPodcastAA = it }
+                                )
+
+                            if (search.input.isBlank() || stringResource(R.string.aa_show_pinned_playlists).contains(
+                                    search.input,
+                                    true
+                                )
+                            )
+                                SwitchSettingEntry(
+                                    title = stringResource(R.string.aa_show_pinned_playlists),
+                                    text = "", //stringResource(R.string.aa_info_show_monthly_playlists_in_playlists_screen),
+                                    isChecked = showPinnedAA,
+                                    onCheckedChange = { showPinnedAA = it }
+                                )
+
+                            if (search.input.isBlank() || stringResource(R.string.aa_show_in_library).contains(
+                                    search.input,
+                                    true
+                                )
+                            )
+                                SwitchSettingEntry(
+                                    title = stringResource(R.string.aa_show_in_library),
+                                    text = "", //stringResource(R.string.aa_info_show_in_library_in_artists_and_albums_screen),
+                                    isChecked = showInLibraryAA,
+                                    onCheckedChange = { showInLibraryAA = it }
+                                )
+
+                            if (search.input.isBlank() || stringResource(R.string.aa_show_on_device).contains(
+                                    search.input,
+                                    true
+                                )
+                            )
+                                SwitchSettingEntry(
+                                    title = stringResource(R.string.aa_show_on_device),
+                                    text = "", //stringResource(R.string.aa_info_show_on_device_in_artists_and_albums_screen),
+                                    isChecked = showOnDeviceAA,
+                                    onCheckedChange = { showOnDeviceAA = it }
+                                )
+
+                            if (search.input.isBlank() || stringResource(R.string.aa_show_top_songs).contains(
+                                    search.input,
+                                    true
+                                )
+                            )
+                                SwitchSettingEntry(
+                                    title = stringResource(R.string.aa_show_top_songs),
+                                    text = "", //stringResource(R.string.aa_info_show_top_playlist_in_playlists_screen),
+                                    isChecked = showTopSongsAA,
+                                    onCheckedChange = { showTopSongsAA = it }
+                                )
+
+                            if (search.input.isBlank() || stringResource(R.string.aa_show_all_songs).contains(
+                                    search.input,
+                                    true
+                                )
+                            )
+                                SwitchSettingEntry(
+                                    title = stringResource(R.string.aa_show_all_songs),
+                                    text = "", // stringResource(R.string.aa_info_show_favorites_playlists_in_playlists_screen),
+                                    isChecked = showAllSongsAA,
+                                    onCheckedChange = { showAllSongsAA = it }
+                                )
+
                             if (search.input.isBlank() || stringResource(R.string.aa_show_shuffle_in_songs).contains(
                                     search.input,
                                     true
@@ -1831,67 +1973,6 @@ fun GeneralSettings(
                                     }
                                 )
                             }
-
-                            if (search.input.isBlank() || stringResource(R.string.aa_show_monthly_playlists).contains(
-                                    search.input,
-                                    true
-                                )
-                            )
-                                SwitchSettingEntry(
-                                    title = stringResource(R.string.aa_show_monthly_playlists),
-                                    text = stringResource(R.string.aa_info_show_monthly_playlists_in_playlists_screen),
-                                    isChecked = showMonthlyPlaylistsAA,
-                                    onCheckedChange = { showMonthlyPlaylistsAA = it }
-                                )
-
-                            if (search.input.isBlank() || stringResource(R.string.aa_show_in_library).contains(
-                                    search.input,
-                                    true
-                                )
-                            )
-                                SwitchSettingEntry(
-                                    title = stringResource(R.string.aa_show_in_library),
-                                    text = stringResource(R.string.aa_info_show_in_library_in_artists_and_albums_screen),
-                                    isChecked = showInLibraryAA,
-                                    onCheckedChange = { showInLibraryAA = it }
-                                )
-
-                            if (search.input.isBlank() || stringResource(R.string.aa_show_on_device).contains(
-                                    search.input,
-                                    true
-                                )
-                            )
-                                SwitchSettingEntry(
-                                    title = stringResource(R.string.aa_show_on_device),
-                                    text = stringResource(R.string.aa_info_show_on_device_in_artists_and_albums_screen),
-                                    isChecked = showOnDeviceAA,
-                                    onCheckedChange = { showOnDeviceAA = it }
-                                )
-
-                            if (search.input.isBlank() || stringResource(R.string.aa_show_top_playlist).contains(
-                                    search.input,
-                                    true
-                                )
-                            )
-                                SwitchSettingEntry(
-                                    title = stringResource(R.string.aa_show_top_playlist),
-                                    text = stringResource(R.string.aa_info_show_top_playlist_in_playlists_screen),
-                                    isChecked = showTopPlaylistAA,
-                                    onCheckedChange = { showTopPlaylistAA = it }
-                                )
-
-                            if (search.input.isBlank() || stringResource(R.string.aa_show_favorites_playlists).contains(
-                                    search.input,
-                                    true
-                                )
-                            )
-                                SwitchSettingEntry(
-                                    title = stringResource(R.string.aa_show_favorites_playlists),
-                                    text = stringResource(R.string.aa_info_show_favorites_playlists_in_playlists_screen),
-                                    isChecked = showFavoritesPlaylistsAA,
-                                    onCheckedChange = { showFavoritesPlaylistsAA = it }
-                                )
-
 
                         }
                     }

@@ -2,7 +2,6 @@ package it.fast4x.riplay
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.app.Activity
 import android.app.ActivityManager
 import android.content.ComponentName
 import android.content.Intent
@@ -55,12 +54,11 @@ import androidx.compose.material3.RippleConfiguration
 import androidx.compose.material3.Surface
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.ripple
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -77,7 +75,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.unit.LayoutDirection
@@ -90,13 +87,11 @@ import androidx.core.os.LocaleListCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
-import androidx.navigation.compose.rememberNavController
-import androidx.palette.graphics.Palette
+import androidx.navigation.NavHostController
 import coil.imageLoader
 import coil.request.ImageRequest
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
@@ -104,7 +99,7 @@ import com.kieronquinn.monetcompat.app.MonetCompatActivity
 import com.kieronquinn.monetcompat.core.MonetActivityAccessException
 import com.kieronquinn.monetcompat.core.MonetCompat
 import com.kieronquinn.monetcompat.interfaces.MonetColorsChangedListener
-import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.views.YouTubePlayerView
+import it.fast4x.androidyoutubeplayer.core.player.views.YouTubePlayerView
 import com.valentinilk.shimmer.LocalShimmerTheme
 import com.valentinilk.shimmer.defaultShimmerTheme
 import dev.kdrag0n.monet.theme.ColorScheme
@@ -118,7 +113,6 @@ import it.fast4x.environment.utils.LocalePreferences
 import it.fast4x.environment.utils.ProxyPreferenceItem
 import it.fast4x.environment.utils.ProxyPreferences
 import it.fast4x.riplay.data.Database
-import it.fast4x.riplay.enums.AnimatedGradient
 import it.fast4x.riplay.enums.ColorPaletteMode
 import it.fast4x.riplay.enums.ColorPaletteName
 import it.fast4x.riplay.enums.DnsOverHttpsType
@@ -127,17 +121,14 @@ import it.fast4x.riplay.enums.HomeScreenTabs
 import it.fast4x.riplay.enums.Languages
 import it.fast4x.riplay.enums.NavRoutes
 import it.fast4x.riplay.enums.PipModule
-import it.fast4x.riplay.enums.PlayerBackgroundColors
 import it.fast4x.riplay.enums.PopupType
 import it.fast4x.riplay.enums.ThumbnailRoundness
-import it.fast4x.riplay.extensions.nsd.discoverNsdServices
 import it.fast4x.riplay.extensions.pip.PipModuleContainer
 import it.fast4x.riplay.extensions.pip.PipModuleCover
 import it.fast4x.riplay.extensions.pip.isInPip
 import it.fast4x.riplay.extensions.pip.maybeEnterPip
 import it.fast4x.riplay.extensions.pip.maybeExitPip
 import it.fast4x.riplay.extensions.preferences.UiTypeKey
-import it.fast4x.riplay.extensions.preferences.animatedGradientKey
 import it.fast4x.riplay.extensions.preferences.appIsRunningKey
 import it.fast4x.riplay.extensions.preferences.applyFontPaddingKey
 import it.fast4x.riplay.extensions.preferences.backgroundProgressKey
@@ -204,7 +195,6 @@ import it.fast4x.riplay.extensions.preferences.closebackgroundPlayerKey
 import it.fast4x.riplay.extensions.preferences.showAutostartPermissionDialogKey
 import it.fast4x.riplay.navigation.AppNavigation
 import it.fast4x.riplay.service.PlayerService
-import it.fast4x.riplay.utils.isLocal
 import it.fast4x.riplay.ui.components.BottomSheet
 import it.fast4x.riplay.ui.components.BottomSheetState
 import it.fast4x.riplay.ui.components.CustomModalBottomSheet
@@ -212,12 +202,7 @@ import it.fast4x.riplay.ui.components.LocalGlobalSheetState
 import it.fast4x.riplay.ui.components.rememberBottomSheetState
 import it.fast4x.riplay.ui.components.themed.CrossfadeContainer
 import it.fast4x.riplay.ui.components.themed.SmartMessage
-import it.fast4x.riplay.ui.screens.player.local.LocalMiniPlayer
-import it.fast4x.riplay.ui.screens.player.local.LocalPlayer
 import it.fast4x.riplay.ui.screens.player.local.rememberLocalPlayerSheetState
-import it.fast4x.riplay.ui.screens.player.online.OnlineMiniPlayer
-import it.fast4x.riplay.ui.screens.player.online.OnlinePlayer
-import it.fast4x.riplay.ui.screens.player.online.components.core.OnlinePlayerView
 import it.fast4x.riplay.ui.screens.settings.isYtLoggedIn
 import it.fast4x.riplay.ui.styling.Appearance
 import it.fast4x.riplay.ui.styling.Dimensions
@@ -250,16 +235,23 @@ import it.fast4x.riplay.enums.CheckUpdateState
 import it.fast4x.riplay.extensions.databasebackup.BackupViewModel
 import it.fast4x.riplay.extensions.databasebackup.DatabaseBackupManager
 import it.fast4x.riplay.extensions.htmlreader.shazamSongInfoExtractor
+import it.fast4x.riplay.extensions.nsd.discoverNsdServices
 import it.fast4x.riplay.extensions.ondevice.OnDeviceViewModel
+import it.fast4x.riplay.extensions.preferences.castToRiTuneDeviceEnabledKey
 import it.fast4x.riplay.extensions.preferences.checkUpdateStateKey
 import it.fast4x.riplay.extensions.preferences.resumeOrPausePlaybackWhenDeviceKey
 import it.fast4x.riplay.extensions.preferences.showSnowfallEffectKey
-import it.fast4x.riplay.extensions.ritune.toRiTuneDevice
-import it.fast4x.riplay.service.experimental.AppSharedScope
-import it.fast4x.riplay.service.experimental.GlobalQueueViewModel
+import it.fast4x.riplay.extensions.ritune.RiTuneSelector
+import it.fast4x.riplay.extensions.ritune.models.toRiTuneDevice
+import it.fast4x.riplay.service.PlayerState
 import it.fast4x.riplay.ui.components.Snowfall
-import it.fast4x.riplay.utils.GlobalSharedData.riTuneDevices
-import it.fast4x.riplay.utils.checkAndDownloadNewVersionCode
+import it.fast4x.riplay.ui.screens.player.online.components.core.OnlinePlayerView
+import it.fast4x.riplay.ui.screens.player.unified.UnifiedMiniPlayer
+import it.fast4x.riplay.ui.screens.player.unified.UnifiedPlayer
+import it.fast4x.riplay.utils.GlobalSharedData
+import it.fast4x.riplay.utils.WebViewInfo
+import it.fast4x.riplay.utils.downloadNewVersionInfo
+import it.fast4x.riplay.utils.getWebViewInfo
 import it.fast4x.riplay.utils.isAtLeastAndroid12
 import it.fast4x.riplay.utils.isManufacturerWithAutostart
 import kotlinx.coroutines.Dispatchers
@@ -270,8 +262,10 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.ExperimentalSerializationApi
 import timber.log.Timber
 import java.net.Proxy
+import java.net.URLEncoder
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -291,10 +285,8 @@ class MainActivity :
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
             if (service is PlayerService.Binder) {
                 this@MainActivity.binder = service
-                this@MainActivity.onlinePlayerPlayingState = service.onlinePlayerPlayingState
-                this@MainActivity.onlinePlayerView = service.onlinePlayerView
+                service.cancelSleepTimer() // cancel sleep timer when service is connected, before app was closed
             }
-
 
         }
 
@@ -323,16 +315,42 @@ class MainActivity :
     var visitorData: MutableState<String> =
         mutableStateOf("")
 
-    //var riTuneDevices: MutableState<List<NsdServiceInfo>> = mutableStateOf(emptyList())
+    //var riTuneDevices: MutableState<List<RiTuneDevice>> = mutableStateOf(emptyList())
 
-    var onlinePlayerPlayingState by mutableStateOf(false)
-    var localPlayerPlayingState: MutableState<Boolean> = mutableStateOf(false)
+    var playerState: PlayerState = PlayerState()
 
     var selectedQueue: MutableState<Queues> = mutableStateOf(defaultQueue())
 
     private var onlinePlayerView: YouTubePlayerView? = null
 
     private var isclosebackgroundPlayerEnabled = false
+
+    /*
+    private var mediaRouter: MediaRouter? = null
+    private var presentation: MiracastPresentation? = null
+    private val mediaRouteSelector = MediaRouteSelector.Builder()
+        .addControlCategory(MediaControlIntent.CATEGORY_LIVE_VIDEO) // Per Miracast
+        .addControlCategory(MediaControlIntent.CATEGORY_REMOTE_PLAYBACK) // Per Google Cast
+        .build()
+    // Stato del contenuto attualmente in casting
+    private val currentCastContent = mutableStateOf<CastContent?>(null)
+    */
+
+    private val audioTaggerViewModel: AudioTagViewModel by viewModels {
+        AudioTagViewModel()
+    }
+
+    private val backupManagerViewModel: BackupViewModel by viewModels {
+        BackupViewModel(DatabaseBackupManager(this, Database), this)
+    }
+
+//    private val globalQueueViewModel: GlobalQueueViewModel by lazy {
+//        ViewModelProvider(AppSharedScope)[GlobalQueueViewModel::class.java]
+//    }
+
+    private val onDeviceViewModel: OnDeviceViewModel by viewModels {
+        OnDeviceViewModel(application)
+    }
 
     private var showAutostartPermissionDialog = false
 
@@ -355,24 +373,6 @@ class MainActivity :
         }
     }
 
-    private val audioTaggerViewModel: AudioTagViewModel by viewModels {
-        AudioTagViewModel()
-    }
-
-    private val backupManagerViewModel: BackupViewModel by viewModels {
-        BackupViewModel(DatabaseBackupManager(this, Database), this)
-    }
-
-    private val globalQueueViewModel: GlobalQueueViewModel by lazy {
-        ViewModelProvider(AppSharedScope)[GlobalQueueViewModel::class.java]
-    }
-
-
-
-    private val onDeviceViewModel: OnDeviceViewModel by viewModels {
-        OnDeviceViewModel(application)
-    }
-
     private fun checkAndRequestStandardPermissions() {
         val permissionsToRequest = mutableListOf<String>()
 
@@ -387,6 +387,7 @@ class MainActivity :
 
         if (isAtLeastAndroid12 && preferences.getBoolean(resumeOrPausePlaybackWhenDeviceKey, false))
             permissionsToRequest.add(Manifest.permission.BLUETOOTH_CONNECT)
+
 
         val permissionsNotGranted = permissionsToRequest.filter {
             ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
@@ -422,11 +423,6 @@ class MainActivity :
             .setNegativeButton(getString(R.string.later), null)
             .setCancelable(false)
             .show()
-
-        // Hide autostart permission dialog after showing the dialog
-        preferences.edit(commit = true) {
-            putBoolean(showAutostartPermissionDialogKey, false)
-        }
     }
 
     private fun openAutostartSettings() {
@@ -473,23 +469,24 @@ class MainActivity :
     }
 
     override fun onStart() {
-        //runCatching {
-            val intent = Intent(this, PlayerService::class.java)
-
-//            if (isAtLeastAndroid8)
-//                startForegroundService(intent)
-//            else
-            startService(intent)
-
-            bindService(intent, serviceConnection, BIND_AUTO_CREATE)
-
-//        }.onFailure {
-//            Timber.e("MainActivity.onStart bindService ${it.stackTraceToString()}")
-//        }
-
         super.onStart()
+
+        val intent = Intent(this, PlayerService::class.java)
+
+        try {
+            if (isAtLeastAndroid8)
+                startForegroundService(intent)
+            else
+                startService(intent)
+        } catch (e: Exception) {
+            Timber.e("MainActivity onStart startService PlayerService Exception: $e")
+        }
+
+        bindService(intent, serviceConnection, BIND_AUTO_CREATE)
+
     }
 
+    @ExperimentalSerializationApi
     @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
     @ExperimentalMaterialApi
     @ExperimentalTextApi
@@ -556,27 +553,31 @@ class MainActivity :
             Objects.requireNonNull(sensorManager)
                 ?.registerListener(
                     sensorListener,
-                    sensorManager!!
-                        .getDefaultSensor(Sensor.TYPE_ACCELEROMETER),
+                    sensorManager
+                        ?.getDefaultSensor(Sensor.TYPE_ACCELEROMETER),
                     SensorManager.SENSOR_DELAY_NORMAL
                 )
         }
 
         checkIfAppIsRunningInBackground()
 
-        //registerNsdService()
-        discoverNsdServices(
-            onServiceFound = {
-                //riTuneDevices.value = it
-                riTuneDevices = it.map { it.toRiTuneDevice() }.toMutableStateList()
-            }
-        )
+        if (preferences.getBoolean(castToRiTuneDeviceEnabledKey, false)) {
+            //registerNsdService()
+            discoverNsdServices(
+                onServiceFound = { devices ->
+                    GlobalSharedData.riTuneDevices.value =
+                        devices.map { device -> device.toRiTuneDevice() }.toMutableStateList()
+                }
+            )
+        }
 
         isclosebackgroundPlayerEnabled = preferences.getBoolean(closebackgroundPlayerKey, false)
 
         showAutostartPermissionDialog = preferences.getBoolean(showAutostartPermissionDialogKey, true)
 
-        checkAndRequestStandardPermissions()
+        //checkAndRequestStandardPermissions()
+
+        //mediaRouter = MediaRouter.getInstance(this)
 
     }
 
@@ -650,30 +651,15 @@ class MainActivity :
         Timber.d("MainActivity.onLowMemory")
     }
 
-    override fun onTrimMemory(level: Int) {
-        super.onTrimMemory(level)
-        if (level == TRIM_MEMORY_UI_HIDDEN) {
-            Timber.d("MainActivity.onTrimMemory TRIM_MEMORY_UI_HIDDEN")
-        }
-        if (level == TRIM_MEMORY_RUNNING_LOW) {
-            Timber.d("MainActivity.onTrimMemory TRIM_MEMORY_RUNNING_LOW")
-        }
-        if (level == TRIM_MEMORY_RUNNING_CRITICAL) {
-            Timber.d("MainActivity.onTrimMemory TRIM_MEMORY_RUNNING_CRITICAL")
-        }
-        if (level == TRIM_MEMORY_BACKGROUND) {
-            Timber.d("MainActivity.onTrimMemory TRIM_MEMORY_BACKGROUND")
-        }
-        if (level == TRIM_MEMORY_COMPLETE) {
-            Timber.d("MainActivity.onTrimMemory TRIM_MEMORY_COMPLETE")
-        }
-        if (level == TRIM_MEMORY_MODERATE) {
-            Timber.d("MainActivity.onTrimMemory TRIM_MEMORY_MODERATE")
-        }
-        if (level == TRIM_MEMORY_RUNNING_MODERATE) {
-            Timber.d("MainActivity.onTrimMemory TRIM_MEMORY_RUNNING_MODERATE")
-        }
-    }
+//    override fun onTrimMemory(level: Int) {
+//        super.onTrimMemory(level)
+//        if (level == TRIM_MEMORY_UI_HIDDEN) {
+//            Timber.d("MainActivity.onTrimMemory TRIM_MEMORY_UI_HIDDEN")
+//        }
+//        if (level == TRIM_MEMORY_BACKGROUND) {
+//            Timber.d("MainActivity.onTrimMemory TRIM_MEMORY_BACKGROUND")
+//        }
+//    }
 
 
     override fun onUserLeaveHint() {
@@ -683,41 +669,18 @@ class MainActivity :
         ) maybeEnterPip()
     }
 
-    override fun onConfigurationChanged(newConfig: Configuration) {
-        super.onConfigurationChanged(newConfig)
-        //if (newConfig.orientation in intArrayOf(Configuration.ORIENTATION_LANDSCAPE, Configuration.ORIENTATION_PORTRAIT))
-        Timber.d("MainActivity.onConfigurationChanged newConfig.orientation ${newConfig.orientation}")
-    }
-
-
-    @Composable
-    fun ThemeApp(
-        isDark: Boolean = false,
-        content: @Composable () -> Unit
-    ) {
-        val view = LocalView.current
-        if (!view.isInEditMode) {
-            SideEffect {
-                (view.context as Activity).window.let { window ->
-                    WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars =
-                        !isDark
-                    WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars =
-                        !isDark
-                }
-            }
-
-        }
-        content()
-    }
-
     @SuppressLint("UnusedBoxWithConstraintsScope")
     @OptIn(
         ExperimentalTextApi::class,
         ExperimentalFoundationApi::class, ExperimentalAnimationApi::class,
         ExperimentalMaterial3Api::class, FlowPreview::class
     )
+    @ExperimentalSerializationApi
     @ExperimentalPermissionsApi
     fun startApp() {
+
+        // Hide autostart permission dialog after showing the dialog
+        preferences.edit(commit = true) { putBoolean(showAutostartPermissionDialogKey, false) }
 
         // Used in QuickPics for load data from remote instead of last saved in SharedPreferences
         preferences.edit(commit = true) { putBoolean(loadedDataKey, false) }
@@ -770,6 +733,31 @@ class MainActivity :
 
         setContent {
 
+            //Update PlayerService parameters
+//            lifecycleScope.launch {
+//                binder?.playerState?.collect { state ->
+//                    playerState = state
+//                    Timber.d("MainActivity.onCreate playerState: $state")
+//                }
+//            }
+
+            val state = binder?.playerState?.collectAsState()
+            playerState = state?.value ?: PlayerState()
+            Timber.d("MainActivity onCreate playerState: $playerState")
+
+            //Check if webview component exists
+            var webViewInfo by remember { mutableStateOf<WebViewInfo>(WebViewInfo()) }
+            LaunchedEffect(Unit) {
+                webViewInfo = getWebViewInfo(this@MainActivity)
+                if (!webViewInfo.isWebViewAvailable)
+                    SmartMessage(
+                        "Android WebView not available, please install or update system",
+                        PopupType.Error,
+                        durationLong = true,
+                        context = this@MainActivity
+                    )
+            }
+
             val backupLauncher = rememberLauncherForActivityResult(
                 contract = ActivityResultContracts.CreateDocument("application/octet-stream")
             ) { uri ->
@@ -795,27 +783,11 @@ class MainActivity :
                 colorPaletteModeKey,
                 ColorPaletteMode.Dark
             )
-            val isPicthBlack = colorPaletteMode == ColorPaletteMode.PitchBlack
-
-            if (preferences.getEnum(
-                    checkUpdateStateKey,
-                    CheckUpdateState.Enabled
-                ) == CheckUpdateState.Enabled
-                && BuildConfig.BUILD_VARIANT == "full"
-            ) {
-                LaunchedEffect(Unit) {
-                    checkAndDownloadNewVersionCode()
-                }
-            }
-
 
             val coroutineScope = rememberCoroutineScope()
             val isSystemInDarkTheme = isSystemInDarkTheme()
-            val navController = rememberNavController()
-            var animatedGradient by rememberPreference(
-                animatedGradientKey,
-                AnimatedGradient.Linear
-            )
+            var navController: NavHostController? = null
+
             var customColor by rememberPreference(customColorKey, Color.Green.hashCode())
             val lightTheme =
                 colorPaletteMode == ColorPaletteMode.Light || (colorPaletteMode == ColorPaletteMode.System && (!isSystemInDarkTheme()))
@@ -902,9 +874,8 @@ class MainActivity :
                 with(preferences) {
                     val colorPaletteName =
                         getEnum(colorPaletteNameKey, ColorPaletteName.Dynamic)
-                    //val colorPaletteMode = getEnum(colorPaletteModeKey, ColorPaletteMode.Dark)
                     val thumbnailRoundness =
-                        getEnum(thumbnailRoundnessKey, ThumbnailRoundness.Heavy)
+                        getEnum(thumbnailRoundnessKey, ThumbnailRoundness.Light)
                     val useSystemFont = getBoolean(useSystemFontKey, false)
                     val applyFontPadding = getBoolean(applyFontPaddingKey, false)
 
@@ -949,17 +920,10 @@ class MainActivity :
             }
 
             fun setDynamicPalette(url: String) {
-                val playerBackgroundColors = preferences.getEnum(
-                    playerBackgroundColorsKey,
-                    PlayerBackgroundColors.BlurredCoverColor
-                )
+
                 val colorPaletteName =
                     preferences.getEnum(colorPaletteNameKey, ColorPaletteName.Dynamic)
                 val isDynamicPalette = colorPaletteName == ColorPaletteName.Dynamic
-                val isCoverColor =
-                    playerBackgroundColors == PlayerBackgroundColors.CoverColorGradient ||
-                            playerBackgroundColors == PlayerBackgroundColors.CoverColor ||
-                            animatedGradient == AnimatedGradient.FluidCoverColorGradient
 
                 if (!isDynamicPalette) return
 
@@ -980,12 +944,6 @@ class MainActivity :
 
                     val bitmap = (result.drawable as? BitmapDrawable)?.bitmap
                     if (bitmap != null) {
-                        val palette = Palette
-                            .from(bitmap)
-                            .maximumColorCount(8)
-                            .addFilter(if (isDark) ({ _, hsl -> hsl[0] !in 36f..100f }) else null)
-                            .generate()
-
                         dynamicColorPaletteOf(bitmap, isDark)?.let {
                             withContext(Dispatchers.Main) {
                                 setSystemBarAppearance(it.isDark)
@@ -999,7 +957,7 @@ class MainActivity :
                                     background4 = Color.Black,
                                     // text = Color.White
                                 ),
-                                typography = appearance.typography.copy(it.text)
+                                typography = appearance.typography.copy(color = it.text)
                             )
                         }
 
@@ -1099,7 +1057,7 @@ class MainActivity :
                                         (binder?.player?.currentMediaItem?.mediaMetadata?.artworkUri.toString().thumbnail(
                                             1200
                                         )
-                                            ?: "").toString()
+                                            ?: "")
                                     artworkUri.let {
                                         if (it.isNotEmpty())
                                             setDynamicPalette(it)
@@ -1166,7 +1124,7 @@ class MainActivity :
 
                             thumbnailRoundnessKey -> {
                                 val thumbnailRoundness =
-                                    sharedPreferences.getEnum(key, ThumbnailRoundness.Heavy)
+                                    sharedPreferences.getEnum(key, ThumbnailRoundness.Light)
 
                                 appearance = appearance.copy(
                                     thumbnailShape = thumbnailRoundness.shape()
@@ -1219,7 +1177,7 @@ class MainActivity :
                             (binder?.player?.currentMediaItem?.mediaMetadata?.artworkUri.toString().thumbnail(
                                 1200
                             )
-                                ?: "").toString()
+                                ?: "")
                         )
                     }
 
@@ -1336,12 +1294,19 @@ class MainActivity :
                     intent.action = null
                 }
 
-                onlinePlayerPlayingState = binder?.onlinePlayerPlayingState == true
-                onlinePlayerView = binder?.onlinePlayerView
+                val isPlaying = playerState.isPlaying
+                val playerView = binder?.onlinePlayerView?.collectAsState()
+                onlinePlayerView = playerView?.value
+
+                val castSheetState = rememberBottomSheetState(
+                    dismissedBound = 0.dp,
+                    collapsedBound = 5.dp,
+                    expandedBound = maxHeight
+                )
 
                 val pip = isInPip(
                     onChange = {
-                        if (!it || (binder?.player?.isPlaying != true && !onlinePlayerPlayingState))
+                        if (!it || !isPlaying)
                             return@isInPip
 
                         localPlayerSheetState.expandSoft()
@@ -1386,17 +1351,19 @@ class MainActivity :
                             LocalRippleConfiguration provides rippleConfiguration,
                             LocalShimmerTheme provides shimmerTheme,
                             LocalPlayerServiceBinder provides binder,
+                            LocalPlayerServiceState provides playerState,
                             LocalPlayerAwareWindowInsets provides playerAwareWindowInsets,
                             LocalLayoutDirection provides LayoutDirection.Ltr,
                             LocalPlayerSheetState provides localPlayerSheetState,
                             LocalMonetCompat provides localMonet,
-                            //LocalRiTuneDevices provides riTuneDevices.value,
-                            LocalOnlinePlayerPlayingState provides onlinePlayerPlayingState,
                             LocalSelectedQueue provides selectedQueue.value,
                             LocalAudioTagger provides audioTaggerViewModel,
                             LocalBackupManager provides backupManagerViewModel,
-                            LocalGlobalQueue provides globalQueueViewModel,
-                            LocalOnDeviceViewModel provides onDeviceViewModel
+                            LocalOnDeviceViewModel provides onDeviceViewModel,
+                            //LocalCastSheetState provides castSheetState,
+                            LocalRiTuneSheetState provides castSheetState,
+                            //LocalOnlinePlayerPlayingState provides onlinePlayerPlayingState,
+                            //LocalGlobalQueue provides globalQueueViewModel,
                             //LocalInternetAvailable provides isInternetAvailable
                         ) {
 
@@ -1413,9 +1380,17 @@ class MainActivity :
                                 )
                             } else {
                                 AppNavigation(
-                                    navController = navController,
+                                    onNavControllerInit = { navController = it },
+                                    //navController = navController,
                                     miniPlayer = {
 
+                                        UnifiedMiniPlayer(
+                                            showPlayer = { localPlayerSheetState.expandSoft() },
+                                            hidePlayer = { localPlayerSheetState.collapseSoft() },
+                                            navController = navController,
+                                        )
+
+                                        /*
                                         if (binder?.currentMediaItemAsSong?.isLocal == true)
                                             LocalMiniPlayer(
                                                 showPlayer = { localPlayerSheetState.expandSoft() },
@@ -1427,15 +1402,11 @@ class MainActivity :
                                                 showPlayer = { localPlayerSheetState.expandSoft() },
                                                 hidePlayer = { localPlayerSheetState.collapseSoft() },
                                                 navController = navController,
-                                                //player = onlinePlayer,
-                                                //playerState = onlinePlayerState,
-                                                //currentDuration = currentDuration.value,
-                                                //currentSecond = currentSecond.value,
                                             )
                                         }
+                                         */
+
                                     },
-                                    //player = onlinePlayer,
-                                    //playerState = onlinePlayerState,
                                     openTabFromShortcut = openTabFromShortcut
                                 )
 
@@ -1450,9 +1421,10 @@ class MainActivity :
 
                                 val thumbnailRoundness by rememberPreference(
                                     thumbnailRoundnessKey,
-                                    ThumbnailRoundness.Heavy
+                                    ThumbnailRoundness.Light
                                 )
 
+                                /*
                                 val localPlayer: @Composable () -> Unit = {
                                     LocalPlayer(
                                         navController = navController,
@@ -1468,7 +1440,6 @@ class MainActivity :
                                 val onlinePlayer: @Composable () -> Unit = {
                                     OnlinePlayer(
                                         navController = navController,
-                                        //playFromSecond = currentSecond.value,
                                         onlineCore = {
                                             binder?.player?.currentMediaItem?.let{
                                                 OnlinePlayerView(
@@ -1484,7 +1455,7 @@ class MainActivity :
                                     )
                                 }
 
-
+                                */
 
                                 BottomSheet(
                                     state = localPlayerSheetState,
@@ -1495,10 +1466,29 @@ class MainActivity :
                                     },
                                     contentAlwaysAvailable = true
                                 ) {
-                                    if (binder?.currentMediaItemAsSong?.isLocal == true)
-                                        localPlayer()
-                                    else
-                                        onlinePlayer()
+                                    navController?.let {
+                                        UnifiedPlayer(
+                                            navController = it,
+                                            onlineCore = {
+                                                binder?.player?.currentMediaItem?.let {
+                                                    OnlinePlayerView(
+                                                        onlinePlayerView = onlinePlayerView,
+                                                        mediaItem = it,
+                                                    )
+                                                }
+                                            },
+                                            playerSheetState = localPlayerSheetState,
+                                            onDismiss = {
+                                                localPlayerSheetState.collapseSoft()
+                                            },
+                                        )
+                                    }
+
+//                                    if (binder?.currentMediaItemAsSong?.isLocal == true)
+//                                        localPlayer()
+//                                    else
+//                                        onlinePlayer()
+
                                 }
 
                                 val menuState = LocalGlobalSheetState.current
@@ -1521,82 +1511,58 @@ class MainActivity :
                                     menuState.content()
                                 }
 
-                                /*
-                                if (showSelectorRiTuneDevices) {
-                                    menuState.display {
-                                        SheetBody {
-                                            Box(
-                                                modifier = Modifier
-                                                    .background(colorPalette().background0)
-                                                    .fillMaxSize()
-                                            ) {
-
-                                                LazyColumn(
-                                                    state = rememberLazyListState(),
-                                                    contentPadding = PaddingValues(all = 10.dp),
-                                                    modifier = Modifier
-                                                        .background(
-                                                            colorPalette().background0
-                                                        )
-                                                        .height(400.dp)
-                                                ) {
-                                                    item {
-                                                        Text(
-                                                            text = "Available RiTune Devices",
-                                                            color = colorPalette().text,
-                                                            modifier = Modifier.padding(bottom = 10.dp)
-                                                        )
-
-
-                                                    }
-                                                    items(
-                                                        items = riTuneDevices.distinctBy { it.host },
-                                                        //key = { it.host }
-                                                    ) { device ->
-                                                        Row(
-                                                            modifier = Modifier
-                                                                .fillMaxWidth()
-                                                                .height(36.dp)
-                                                                .clickable {
-                                                                    var dev = riTuneDevices[ riTuneDevices.indexOf(device) ]
-                                                                    dev.selected = !dev.selected
-                                                                    menuState.hide()
-                                                                    showSelectorRiTuneDevices =
-                                                                        false
-                                                                },
-                                                            verticalAlignment = Alignment.CenterVertically
-                                                        ) {
-                                                            IconButton(
-                                                                icon = if (device.selected) R.drawable.cast_connected else R.drawable.cast_disconnected,
-                                                                color = colorPalette().text,
-                                                                enabled = true,
-                                                                onClick = {},
-                                                                modifier = Modifier
-                                                                    .size(32.dp),
-                                                            )
-                                                            Spacer(modifier = Modifier.width(16.dp))
-                                                            Text(
-                                                                text = device.name,
-                                                                color = colorPalette().text,
-                                                                modifier = Modifier.border(BorderStroke(1.dp, Color.Red))
-                                                            )
-                                                        }
-                                                    }
-                                                }
-
-                                                LinearProgressIndicator(
-                                                    modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .height(1.dp)
-                                                        .align(Alignment.BottomCenter),
-                                                )
-
-                                            }
+                                /* todo work in progress with cast
+                                BottomSheet(
+                                    state = castSheetState,
+                                    collapsedContent = {
+                                        Box(modifier = Modifier.fillMaxSize()) {
+                                            //Text(text = "BottomSheet", modifier = Modifier.align(Alignment.Center))
                                         }
+                                    },
+                                    contentAlwaysAvailable = true
+                                ) {
+                                    CastScreen(
+                                        onCastVideo = {
+                                            currentCastContent.value = CastContent.Video(
+                                                "https://www.learningcontainer.com/wp-content/uploads/2020/05/sample-mp4-file.mp4"
+                                            )
+                                            updatePresentation()
+                                        },
+                                        onCastYouTube = { videoId ->
+                                            currentCastContent.value = CastContent.GenericView(
+                                                viewFactory = { context -> onlinePlayerView as View }
+                                            )
+                                            updatePresentation()
+                                        },
+                                        onDisconnect = {
+                                            currentCastContent.value = null
+                                            presentation?.dismiss()
+                                            presentation = null
+                                        }
+                                    )
+                                }
+                                 */
+
+                                CustomModalBottomSheet(
+                                    showSheet = castSheetState.isExpanded,
+                                    onDismissRequest = castSheetState::collapseSoft,
+                                    containerColor = Color.Transparent,
+                                    sheetState = rememberModalBottomSheetState(
+                                        skipPartiallyExpanded = true
+                                    ),
+                                    dragHandle = {
+                                        Surface(
+                                            modifier = Modifier.padding(vertical = 0.dp),
+                                            color = Color.Transparent,
+                                            //shape = thumbnailShape
+                                        ) {}
+                                    },
+                                    shape = thumbnailRoundness.shape()
+                                ) {
+                                    RiTuneSelector(){
+                                        //castSheetState.collapseSoft()
                                     }
                                 }
-
-                                 */
 
                             }
                         }
@@ -1624,10 +1590,7 @@ class MainActivity :
                     }
 
                     val listener = object : Player.Listener {
-                        override fun onIsPlayingChanged(isPlaying: Boolean) {
-                            Timber.d("MainActivity Player.Listener onIsPlayingChanged isPlaying $isPlaying")
-                            localPlayerPlayingState.value = isPlaying
-                        }
+
                         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                             Timber.d("MainActivity Player.Listener onMediaItemTransition mediaItem ${mediaItem?.mediaId} reason $reason foreground $appRunningInBackground")
 
@@ -1687,6 +1650,7 @@ class MainActivity :
                     context = this@MainActivity
                 )
 
+
                 lifecycleScope.launch(Dispatchers.Main) {
                     when (val path = uri.pathSegments.firstOrNull()) {
                         "playlist" -> uri.getQueryParameter("list")?.let { playlistId ->
@@ -1696,33 +1660,35 @@ class MainActivity :
                                 Environment.playlistPage(BrowseBody(browseId = browseId))
                                     ?.getOrNull()?.let {
                                         it.songsPage?.items?.firstOrNull()?.album?.endpoint?.browseId?.let { browseId ->
-                                            navController.navigate(route = "${NavRoutes.album.name}/$browseId")
+                                            navController?.navigate(route = "${NavRoutes.album.name}/$browseId")
 
                                         }
                                     }
                             } else {
-                                navController.navigate(route = "${NavRoutes.playlist.name}/$browseId")
+                                navController?.navigate(route = "${NavRoutes.playlist.name}/$browseId")
                             }
                         }
 
                         "channel", "c" -> uri.lastPathSegment?.let { channelId ->
                             try {
-                                navController.navigate(route = "${NavRoutes.artist.name}/$channelId")
+                                navController?.navigate(route = "${NavRoutes.artist.name}/$channelId")
                             } catch (e: Exception) {
                                 Timber.e("MainActivity.setContent intentUriData ${e.stackTraceToString()}")
                             }
                         }
 
                         "search" -> uri.getQueryParameter("q")?.let { query ->
-                            navController.navigate(route = "${NavRoutes.searchResults.name}/$query")
+                            val encodedQuery = URLEncoder.encode(query, "UTF-8")
+                            navController?.navigate(route = "${NavRoutes.searchResults.name}/$encodedQuery")
                         }
 
                         else -> when {
                             path == "watch" -> uri.getQueryParameter("v")
                             uri.host == "youtu.be" -> path
                             path != "watch" && uri.host == null -> {
-                                path.let { query ->
-                                    navController.navigate(route = "${NavRoutes.searchResults.name}/$query")
+                                path?.let { query ->
+                                    val encodedQuery = URLEncoder.encode(query, "UTF-8")
+                                    navController?.navigate(route = "${NavRoutes.searchResults.name}/$encodedQuery")
                                 }
                                 null
                             }
@@ -1730,7 +1696,7 @@ class MainActivity :
                                 shazamSongInfoExtractor(uri.toString(), { artist, title, error ->
                                     Timber.d("MainActivity shazamSongInfoExtractor result $artist $title $error")
                                     if (title.isNotEmpty())
-                                        navController.navigate(route = "${NavRoutes.searchResults.name}/${title} ${artist}")
+                                        navController?.navigate(route = "${NavRoutes.searchResults.name}/${title} ${artist}")
 
                                 })
                                 null
@@ -1764,7 +1730,58 @@ class MainActivity :
 
         }
 
+
+        if (preferences.getEnum(
+                checkUpdateStateKey,
+                CheckUpdateState.Enabled
+            ) == CheckUpdateState.Enabled
+            && BuildConfig.BUILD_VARIANT == "full"
+        ) { downloadNewVersionInfo() }
+
     }
+
+    /*
+    private fun updatePresentation() {
+
+        val display = mediaRouter?.getSelectedRoute()?.presentationDisplay
+
+        if (display != null && currentCastContent.value != null) {
+            presentation?.dismiss()
+            presentation = MiracastPresentation(this, display, currentCastContent.value!!)
+            presentation?.show()
+        } else {
+
+            val dialog = MediaRouteChooserDialog(this)
+            dialog.routeSelector = mediaRouteSelector
+            dialog.show()
+//            presentation?.dismiss()
+//            presentation = null
+        }
+
+
+    }
+
+    private val mediaRouterCallback = object : MediaRouter.Callback() {
+        override fun onRouteSelected(
+            router: MediaRouter,
+            route: MediaRouter.RouteInfo,
+            reason: Int
+        ) {
+            updatePresentation()
+        }
+
+        override fun onRouteUnselected(router: MediaRouter, route: MediaRouter.RouteInfo) {
+            updatePresentation()
+        }
+
+        override fun onRoutePresentationDisplayChanged(
+            router: MediaRouter,
+            route: MediaRouter.RouteInfo
+        ) {
+            updatePresentation()
+        }
+    }
+     */
 
     fun updateSelectedQueue() {
         Database.asyncTransaction {
@@ -1810,6 +1827,8 @@ class MainActivity :
     override fun onResume() {
         super.onResume()
 
+        binder?.onlinePlayer?.setVolume(100) // maybe is needed when webview lost audiofocus
+
         preferences.edit(commit = true) { putBoolean(appIsRunningKey, true) }
 
         runCatching {
@@ -1822,6 +1841,8 @@ class MainActivity :
             Timber.e("MainActivity.onResume registerListener sensorManager ${it.stackTraceToString()}")
         }
         appRunningInBackground = false
+
+        //mediaRouter?.addCallback(mediaRouteSelector, mediaRouterCallback)
 
         Timber.d("MainActivity.onResume $appRunningInBackground")
     }
@@ -1838,6 +1859,8 @@ class MainActivity :
         }
         appRunningInBackground = true
 
+        //mediaRouter?.removeCallback(mediaRouterCallback)
+
         Timber.d("MainActivity.onPause $appRunningInBackground")
     }
 
@@ -1848,22 +1871,18 @@ class MainActivity :
 
     }
 
-    // not needed
-//    override fun onStop() {
-//        Timber.d("MainActivity.onStop")
-//        runCatching {
-//            unbindService(serviceConnection)
-//        }.onFailure {
-//            Timber.e("MainActivity.onStop unbindService ${it.stackTraceToString()}")
-//        }
-//
-//        if (!isclosebackgroundPlayerEnabled)
-//            onStart() // some device require white listed
-//
-//
-//
-//        super.onStop()
-//    }
+
+    override fun onStop() {
+        super.onStop()
+
+        Timber.d("MainActivity.onStop")
+        runCatching {
+            unbindService(serviceConnection)
+        }.onFailure {
+            Timber.e("MainActivity.onStop unbindService ${it.stackTraceToString()}")
+        }
+
+    }
 
     @UnstableApi
     override fun onDestroy() {
@@ -1932,18 +1951,13 @@ class MainActivity :
 var appRunningInBackground: Boolean = false
 
 val LocalPlayerServiceBinder = staticCompositionLocalOf<PlayerService.Binder?> { null }
+val LocalPlayerServiceState = staticCompositionLocalOf<PlayerState> { PlayerState() }
 
-val LocalPlayerAwareWindowInsets = staticCompositionLocalOf<WindowInsets> { TODO() }
+val LocalPlayerAwareWindowInsets = staticCompositionLocalOf<WindowInsets> { error("No window insets provided") }
 
 @OptIn(ExperimentalMaterial3Api::class)
 val LocalPlayerSheetState =
     staticCompositionLocalOf<BottomSheetState> { error("No sheet state provided") }
-
-val LocalOnlinePlayerPlayingState =
-    staticCompositionLocalOf<Boolean> { error("No player sheet state provided") }
-
-//val LocalRiTuneDevices =
-//    staticCompositionLocalOf<List<NsdServiceInfo>> { error("No RiTune devices provided") }
 
 val LocalSelectedQueue = staticCompositionLocalOf<Queues?> { error("No selected queue provided") }
 
@@ -1951,9 +1965,15 @@ val LocalAudioTagger = staticCompositionLocalOf<AudioTagViewModel> { error("No a
 
 val LocalBackupManager = staticCompositionLocalOf<BackupViewModel> { error("No backup manager provided") }
 
-val LocalGlobalQueue = staticCompositionLocalOf<GlobalQueueViewModel> { error("No player service queue provided") }
-
 val LocalOnDeviceViewModel = staticCompositionLocalOf<OnDeviceViewModel> { error("No on device view model provided") }
 
+//val LocalCastSheetState = staticCompositionLocalOf<BottomSheetState> { error("No cast screen provided") }
 
+
+//val LocalGlobalQueue = staticCompositionLocalOf<GlobalQueueViewModel> { error("No player service queue provided") }
+
+//val LocalOnlinePlayerPlayingState =
+//    staticCompositionLocalOf<Boolean> { error("No player sheet state provided") }
+
+val LocalRiTuneSheetState = staticCompositionLocalOf<BottomSheetState> { error("No RiTune sheet provided") }
 

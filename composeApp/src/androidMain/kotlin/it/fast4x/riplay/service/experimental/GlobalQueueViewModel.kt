@@ -21,7 +21,6 @@ import it.fast4x.riplay.extensions.preferences.preferences
 import it.fast4x.riplay.service.PlayerService
 import it.fast4x.riplay.ui.components.themed.SmartMessage
 import it.fast4x.riplay.utils.appContext
-import it.fast4x.riplay.utils.cleaned
 import it.fast4x.riplay.utils.forcePlay
 import it.fast4x.riplay.utils.globalContext
 import it.fast4x.riplay.utils.isLocal
@@ -114,9 +113,9 @@ class GlobalQueueViewModel() : ViewModel(), ViewModelProvider.Factory {
             val excludeSongWithDurationLimit =
                 preferences.getEnum(excludeSongsWithDurationLimitKey, DurationInMinutes.Disabled)
             if (excludeSongWithDurationLimit != DurationInMinutes.Disabled) {
-                val excludedSong = mediaItem.mediaMetadata.extras?.getString("durationText")?.let { it1 ->
+                val excludedSong = (mediaItem.mediaMetadata.extras?.getString("durationText")?.let { it1 ->
                     durationTextToMillis(it1)
-                }!! <= excludeSongWithDurationLimit.minutesInMilliSeconds
+                } ?: 0) <= excludeSongWithDurationLimit.minutesInMilliSeconds
 
                 if (excludedSong)
                     CoroutineScope(Dispatchers.Main).launch {
@@ -154,9 +153,9 @@ class GlobalQueueViewModel() : ViewModel(), ViewModelProvider.Factory {
 
             if (excludeSongWithDurationLimit != DurationInMinutes.Disabled) {
                 filteredMediaItems = mediaItems.filter {
-                    it.mediaMetadata.extras?.getString("durationText")?.let { it1 ->
+                    (it.mediaMetadata.extras?.getString("durationText")?.let { it1 ->
                         durationTextToMillis(it1)
-                    }!! < excludeSongWithDurationLimit.minutesInMilliSeconds
+                    } ?: 0) < excludeSongWithDurationLimit.minutesInMilliSeconds
                 }
 
                 val excludedSongs = mediaItems.size - filteredMediaItems.size
@@ -217,7 +216,8 @@ class GlobalQueueViewModel() : ViewModel(), ViewModelProvider.Factory {
 
         println("LoadMasterQueue loadPersistentQueue is enabled, processing")
         Database.asyncQuery {
-            val queuedSong = queuedMediaItems()
+            clearOldEmptyQueuedMediaItems()
+            val queuedSong = try { queuedMediaItems() } catch (e: Exception) { emptyList() }
 
             if (queuedSong.isEmpty()) return@asyncQuery
 
@@ -265,7 +265,7 @@ class GlobalQueueViewModel() : ViewModel(), ViewModelProvider.Factory {
         val filteredMediaItems = if (context != null) exclude(mediaItems, context)
         else mediaItems
 
-        add(filteredMediaItems.map { it.cleaned })
+        add(filteredMediaItems)
         SmartMessage(globalContext().resources.getString(R.string.done), context = globalContext())
     }
 
@@ -277,7 +277,7 @@ class GlobalQueueViewModel() : ViewModel(), ViewModelProvider.Factory {
         mediaItem.mediaMetadata.extras?.putLong("idQueue", queue.id)
         println("mediaItem-enqueue extras: ${mediaItem.mediaMetadata.extras}")
 
-        add(mediaItem.cleaned)
+        add(mediaItem)
         SmartMessage(globalContext().resources.getString(R.string.done), context = globalContext())
 
     }
@@ -296,7 +296,7 @@ class GlobalQueueViewModel() : ViewModel(), ViewModelProvider.Factory {
             }
         }
 
-        add(filteredMediaItems.map { it.cleaned }, _currentIndex.value + 1)
+        add(filteredMediaItems, _currentIndex.value + 1)
         SmartMessage(globalContext().resources.getString(R.string.done), context = globalContext())
     }
 
@@ -311,7 +311,7 @@ class GlobalQueueViewModel() : ViewModel(), ViewModelProvider.Factory {
         mediaItem.mediaMetadata.extras?.putLong("idQueue", queue.id)
         println("mediaItem-addNext extras: ${mediaItem.mediaMetadata.extras}")
 
-        add(mediaItem.cleaned, _currentIndex.value + 1)
+        add(mediaItem, _currentIndex.value + 1)
         SmartMessage(globalContext().resources.getString(R.string.done), context = globalContext())
     }
 
@@ -372,9 +372,9 @@ class GlobalQueueViewModel() : ViewModel(), ViewModelProvider.Factory {
     fun forcePlay(mediaItem: MediaItem, replace: Boolean = false) {
         if (exclude(mediaItem, globalContext())) return
         if (!replace)
-            setMediaItem(mediaItem.cleaned)
+            setMediaItem(mediaItem)
         else
-            replaceMediaItem(_currentIndex.value, mediaItem.cleaned)
+            replaceMediaItem(_currentIndex.value, mediaItem)
 
         loadCurrentMedia()
     }
